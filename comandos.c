@@ -138,3 +138,11 @@ void Cmd_open (char * tr[], listFiles *L) {
         sprintf (aux,"dup %d (%s)",df, p);
         .......AnadirAFicherosAbiertos......duplicado......aux.....fcntl(duplicado,F_GETFL).....;
     }
+
+
+void authors(char *input_trozos[]){
+   if(strcmp(input_trozos[1], "-n") == 0)
+      printf("");
+   else if(strcmp(input_trozos[1], "-l") == 0)
+}
+   
