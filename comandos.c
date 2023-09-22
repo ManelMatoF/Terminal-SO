@@ -181,6 +181,32 @@ void infosys(){
     }
 }
 
+void pid(char *input_trozos[]){
+    if(strcmp(input_trozos[1], "-p") == 0){
+        pid_t ppid_aux = getppid();
+        printf("Pid del proceso padre del shell: %d\n", ppid_aux);
+    } else {
+        pid_t pid_aux = getpid();
+        printf("Pid del proceso del shell: %d\n", pid_aux);
+    }
+}
+
+void chdir_func(char *input_trozos[]){
+    if(strcmp(input_trozos[1], "") != 0){
+        if (chdir(input_trozos[1]) == 0)
+            printf("\n");
+        else
+            perror("No ha sido posible cambiar el directorio\n");
+
+    } else{
+        char cd[512];
+        if (getcwd(cd, sizeof(cd)) != NULL)
+            printf("%s\n", cd);
+        else
+            perror("No se ha podido obtener el directorio actual de trabajo");
+    }
+}
+
 void quit(){
 exit(0);
 }
