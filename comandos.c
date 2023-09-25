@@ -207,15 +207,15 @@ void chdir_func(char *input_trozos[]){
     }
 }
 
-void quit(){
-exit(0);
+void quit(bool terminado){
+    terminado = true;
 }
 
-void exit_func(){
-exit(0);
+void exit_func(bool terminado){
+    terminado = true;
 }
 
-void bye(){
-exit(0);
+void bye(bool terminado){
+    terminado = true;
 }
    
