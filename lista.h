@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <fcntl.h> // Para la función open
 #include <unistd.h> // Para la función close
+#include <time.h>
+#include <sys/utsname.h>
+#include <stdbool.h>
 #define MAXNAME 100
 typedef struct FileInfo* tPosL;
 struct FileInfo{
@@ -15,6 +18,11 @@ struct FileInfo{
 };
 typedef tPosL listFiles;
 
+typedef struct ComandHist* tPosH;
+struct ComandHist{
+    char name[MAXNAME];
+    tPosH next;
+};
+typedef tPosH listHist;
 
 #endif //TERMINAL_SHELL_H
-
