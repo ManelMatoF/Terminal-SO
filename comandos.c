@@ -207,6 +207,81 @@ void chdir_func(char *input_trozos[]){
     }
 }
 
+oid repeat_command(char *input_trozos[], /*lista*/){
+
+
+}
+
+
+
+void hist(char *input_trozos[]){
+
+
+
+
+}
+
+void help(char *commands[], char *input_trozos[], int nComands){
+    int i;
+
+    if(strcmp(input_trozos[1], "") != 0) {
+        for (int i = 0; i < nComands && strcmp(commands[i], input_trozos[1]) != 0; i++);
+        switch (i) {
+            case 1 :
+                printf("authors [-n|-l]\t Muestra los nombres y/o logins de los autores\n");
+                break;
+            case 2:
+                printf("id [-p]\t Muestra el pid del shell o de su proceso padre\n");
+                break;
+            case 3:
+                pritnf("chdir [dir]\t	Cambia (o muestra) el directorio actual del shell\n");
+                break;
+            case 4:
+                prinf("date\tMuestra la fecha acual");
+                break;
+            case 5:
+                printf("");
+                break;
+            case 6:
+                printf("");
+                break;
+            case 7:
+                printf("");
+                break;
+            case 8:
+                pritnf("");
+                break;
+            case 9:
+                printf("");
+                break;
+            case 10:
+                printf("");
+                break;
+            case 11:
+                printf("");
+                break;
+            case 12:
+                printf("");
+                break;
+            case 13:
+                printf("");
+                break;
+            case 14:
+                printf("");
+                break;
+            case 15:
+                printf("");
+                break;
+            default :
+                printf("%s no encontrado", input_trozos[1]);
+                break;
+        }
+    }else{
+        for( i = 0; i < nComands; i++)
+            printf("%s ", commands[i]);
+    }
+}
+
 void quit(bool terminado){
     terminado = true;
 }
