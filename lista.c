@@ -1,4 +1,3 @@
-#include "shell.h"
 
 void createEmptyListF(listFiles *L) {
     *L = NULL;
@@ -49,6 +48,22 @@ int countFiles(listFiles *L){
     }
     return a;
 }
+
+char *getItemF(tPosL p,listFiles L) {
+    return p->name;
+}
+
+tPosL findItemF(int df, listFiles L) {
+    tPosL q;
+        for (q = 0; q <= lastF(L); q++) {// Este FOR percorre o array ata a última posición grazas i
+            if (q->df == df) {   // Compárase o elemento a buscar coa lista e devolve a súa posición
+                return q;
+            }
+        }
+        return NULL;
+    }
+
+
 
 void insertItemF(int df, int mode, char name[MAXNAME], listFiles *L){
     tPosL aux,x;
