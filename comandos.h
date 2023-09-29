@@ -18,12 +18,13 @@ void tiempo();
 void infosys();
 void pid(char *input_trozos[]);
 void chdir_func(char *input_trozos[]);
-bool *repeat_command(char *input_trozos[], listHist H, char *cadena);
+bool repeat_command(char *input_trozos[], listHist H, char *cadena);
 void hist(char *input_trozos[], listHist *H);
 void help(char *commands[], char *input_trozos[], int nComands);
-bool quit();
-bool exit_func();
-bool bye();
+void quit(bool *terminado);
+void exit_func(bool *terminado);
+void bye(bool *terminado);
 
 
 #endif //P0_COMANDOS_H
+
