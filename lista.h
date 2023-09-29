@@ -1,5 +1,6 @@
-#ifndef TERMINAL_SHELL_H
-#define TERMINAL_SHELL_H
+#ifndef P0_LISTA_H
+#define P0_LISTA_H
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,9 +21,9 @@ typedef tPosL listFiles;
 
 typedef struct ComandHist* tPosH;
 struct ComandHist{
-    char name[MAXNAME];
+    char comand[MAXNAME];
     tPosH next;
 };
 typedef tPosH listHist;
 
-#endif //TERMINAL_SHELL_H
+#endif
