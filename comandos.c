@@ -123,22 +123,20 @@ void Cmd_open (char * tr[], listFiles *L) {
             CloseOpenFile(L,df);
     }
 
-         void Cmd_dup (char * tr[])
-         {
+ void Cmd_dup (char * tr[], listFiles *L){
              int df, duplicado;
              char aux[MAXNAME],*p;
 
-             if (tr[0]==NULL || (df=atoi(tr[0]))<0) { /*no hay parametro*/
-            ListOpenFiles(-1);                 /*o el descriptor es menor que 0*/
+             if (tr[0]==NULL || (df=atoi(tr[0]))<0) { /*no hay parametro*/ /*o el descriptor es menor que 0*/
+            perror("No es posible duplicar el archivo");
             return;
         }
+             p = getItemF(findItemF(df, *L), *L);
+             sprintf (aux,"dup %d (%s)",df, p);
+             insertItemF(df, fcntl(duplicado,F_GETFL), p, L); //CAMBIAR LA ESTRUCTURA FILEINFO
+             dup(df);
 
-
-        p=.....NombreFicheroDescriptor(df).......;
-        sprintf (aux,"dup %d (%s)",df, p);
-        .......AnadirAFicherosAbiertos......duplicado......aux.....fcntl(duplicado,F_GETFL).....;
     }
-
 
 void authors(char *input_trozos[]){
     if(strcmp(input_trozos[1], "-n") == 0)
