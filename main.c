@@ -4,7 +4,6 @@
 #include "comandos.h"
 #include "lista.h"
 
-
 #define MAX_CH 250
 #define MAX_TROZOS 10
 #define MAX_COMANDS 16
@@ -35,7 +34,7 @@ int encontrarComands(char *input_trozos[],char *comands[]){
         return i;
 }
 
-void procesarEntrada(char *cadena, char *input_trozos[],char *comands[], bool terminado, listHist *H, listFiles *F){
+void procesarEntrada(char *cadena, char *input_trozos[],char *comands[], bool *terminado, listHist *H, listFiles *F){
     insertItemH(cadena, H);
     TrocearCadena(cadena, input_trozos);
     int cmd = encontrarComands(input_trozos, comands);
@@ -59,8 +58,8 @@ void procesarEntrada(char *cadena, char *input_trozos[],char *comands[], bool te
             hist(input_trozos, H);
             break;
         case 6:
-            if(repeat_command(input_trozos, *H, cadena));
-                procesarEntrada(cadena, input_trozos, comands, terminado, H, *F);//probar
+            if(repeat_command(input_trozos, *H, cadena))
+                procesarEntrada(cadena, input_trozos, comands, terminado, H, F);//probar
             break;
         case 7:
             Cmd_open(input_trozos, F);
@@ -81,13 +80,13 @@ void procesarEntrada(char *cadena, char *input_trozos[],char *comands[], bool te
             help(comands, input_trozos, MAX_COMANDS);
             break;
         case 13:
-            terminado = quit();
+            quit(terminado);
             break;
         case 14:
-            terminado = exit_func();
+            exit_func(terminado);
             break;
         case 15:
-            terminado = bye();
+            bye(terminado);
             break;
         default:
             printf("No ejecutado: No such file or directory\n");
@@ -156,11 +155,10 @@ void insertComands(char *comands[]){
 int main(){
     char input[MAX_CH];
     char *input_trozos[MAX_TROZOS], *comands[MAX_COMANDS];
-    int num_input;
-    bool terminado;
+    bool terminado = false;
+
     listHist H;
     listFiles F;
-
     createEmptyListF(&F);
     createEmptyListH(&H);
 
@@ -168,12 +166,10 @@ int main(){
         input_trozos[i] = malloc(MAX_CH * sizeof(char));
     insertComands(comands);
 
-    terminado = false;
-
     while(!terminado){
         imprimirPromt();
         leerEntrada(input);
-        procesarEntrada(input, input_trozos,comands, terminado, &H, &F);
+        procesarEntrada(input, input_trozos,comands, &terminado, &H, &F);
     }
 
     for (int i = 0; i < MAX_TROZOS; i++) {
