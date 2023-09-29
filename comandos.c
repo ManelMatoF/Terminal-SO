@@ -7,9 +7,7 @@
 #include <sys/utsname.h>
 #include <stdbool.h>
 #include <ctype.h>
-#include <limits.h>
 #include <sys/types.h>
-#include <errno.h>
 
 #include "comandos.h"
 #include "lista.h"
@@ -163,7 +161,7 @@ void chdir_func(char *input_trozos[]){
     }
 }
 
-bool *repeat_command(char *input_trozos[], listHist H, char *cadena){
+bool repeat_command(char *input_trozos[], listHist H, char *cadena){
     tPosH p;
     char *comand;
     int i = 0;
@@ -189,7 +187,7 @@ bool *repeat_command(char *input_trozos[], listHist H, char *cadena){
         else{
             comand = getItemH(p, H);
             printf("Ejecutando hist (%d): %s", n, comand);
-            cadena = comand;
+            strcpy(cadena, comand);
             return true;
         }
         
@@ -302,14 +300,14 @@ void help(char *commands[], char *input_trozos[], int nComands){
 }
 
 
-bool quit(){
-    return true;
+void quit(bool *terminado){
+    *terminado = true;
 }
 
-bool exit_func(){
-    return true;
+void exit_func(bool *terminado){
+    *terminado = true;
 }
 
-bool bye(){
-    return true;
+void bye(bool *terminado){
+    *terminado = true;
 }
