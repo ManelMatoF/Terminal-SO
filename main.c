@@ -38,55 +38,58 @@ void procesarEntrada(char *cadena, char *input_trozos[],char *comands[], int ter
     TrocearCadena(cadena, input_trozos);
     int cmd = encontrarComands(input_trozos, comands);
     switch(cmd){
-        case 1:
+       
+         case 1:
             authors(input_trozos);
             break;
         case 2:
             pid(input_trozos);
             break;
         case 3:
-            chdir(input_trozos);
+            chdir_func(input_trozos);
             break;
         case 4:
-            date(input_trozos);
+            date();
             break;
         case 5:
-            chdir(input_trozos);
+            tiempo();
             break;
         case 6:
-            chdir(input_trozos);
+            hist(input_trozos);
             break;
         case 7:
-            chdir(input_trozos);
+            repeat_command(input_trozos, *H);
             break;
         case 8:
-            chdir(input_trozos);
+            Cmd_open(input_trozos, L);
             break;
         case 9:
-            chdir(input_trozos);
+            Cmd_close(input_trozos, L);
             break;
         case 10:
-            chdir(input_trozos);
+            Cmd_dup(input_trozos, L);
             break;
         case 11:
-            chdir(input_trozos);
+            ListOpenFiles(*L);
             break;
         case 12:
-            chdir(input_trozos);
+            infosys();
             break;
         case 13:
-            chdir(input_trozos);
+            help(comands, input_trozos, MAX_COMANDS);
             break;
         case 14:
-            chdir(input_trozos);
+            quit(terminado);
             break;
         case 15:
-            chdir(input_trozos);
+            exit_func(terminado);
+            break;
+        case 16:
+            bye(terminado);
             break;
         default:
             printf("No ejecutado: No such file or directory\n");
-            break;
-
+            break; 
     }
 }
 
