@@ -3,10 +3,12 @@
 #include <stdlib.h>
 #include "comandos.h"
 #include "lista.h"
+#include "lista.c"
+#include "comandos.c"
 
 #define MAX_CH 250
 #define MAX_TROZOS 10
-#define MAX_COMANDS 20
+#define MAX_COMANDS 16
 
 void imprimirPromt(){
     printf("-> ");
@@ -34,58 +36,59 @@ int encontrarComands(char *input_trozos[],char *comands[]){
         return i;
 }
 
-void procesarEntrada(char *cadena, char *input_trozos[],char *comands[], int terminado){
+void procesarEntrada(char *cadena, char *input_trozos[],char *comands[], bool terminado, listHist *H, listFiles *F){
+    insertItemH(cadena, H);
     TrocearCadena(cadena, input_trozos);
     int cmd = encontrarComands(input_trozos, comands);
     switch(cmd){
-       
-         case 1:
+        case 0:
             authors(input_trozos);
             break;
-        case 2:
+        case 1:
             pid(input_trozos);
             break;
-        case 3:
+        case 2:
             chdir_func(input_trozos);
             break;
-        case 4:
+        case 3:
             date();
             break;
-        case 5:
+        case 4:
             tiempo();
             break;
+        case 5:
+            hist(input_trozos, H);
+            break;
         case 6:
-            hist(input_trozos);
+            if(repeat_command(input_trozos, *H, cadena));
+                procesarEntrada(cadena, input_trozos, comands, terminado, H, *F);//probar
             break;
         case 7:
-            repeat_command(input_trozos, *H);
+            Cmd_open(input_trozos, F);
             break;
         case 8:
-            Cmd_open(input_trozos, L);
+            Cmd_close(input_trozos, F);
             break;
         case 9:
-            Cmd_close(input_trozos, L);
+            Cmd_dup(input_trozos, F);
             break;
         case 10:
-            Cmd_dup(input_trozos, L);
+            ListOpenFiles(*F);
             break;
         case 11:
-            ListOpenFiles(*L);
-            break;
-        case 12:
             infosys();
             break;
-        case 13:
+        case 12:
             help(comands, input_trozos, MAX_COMANDS);
             break;
+        case 13:
+            terminado = quit();
+            break;
         case 14:
-            quit(terminado);
+            terminado = exit_func();
             break;
         case 15:
-            exit_func(terminado);
-            break;
-        case 16:
-            bye(terminado);
+            terminado = bye();
             break;
         default:
             printf("No ejecutado: No such file or directory\n");
@@ -145,29 +148,33 @@ void insertComands(char *comands[]){
             case 15 :
                 comands[i]="bye";
                 break;
-
             default:
                 break;
         }
     }
 }
 
-
 int main(){
-    char input[MAX_CH]; //preguntar si asi o con el malloc (punteros)
+    char input[MAX_CH];
     char *input_trozos[MAX_TROZOS], *comands[MAX_COMANDS];
-    int num_input, terminado;
+    int num_input;
+    bool terminado;
+    listHist H;
+    listFiles F;
+
+    createEmptyListF(&F);
+    createEmptyListH(&H);
 
     for (int i = 0; i < MAX_TROZOS; i++)
         input_trozos[i] = malloc(MAX_CH * sizeof(char));
     insertComands(comands);
 
-    terminado = 0;
+    terminado = false;
 
     while(!terminado){
         imprimirPromt();
         leerEntrada(input);
-        procesarEntrada(input, input_trozos,comands, terminado);
+        procesarEntrada(input, input_trozos,comands, terminado, &H, &F);
     }
 
     for (int i = 0; i < MAX_TROZOS; i++) {
