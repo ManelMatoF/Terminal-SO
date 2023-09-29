@@ -1,3 +1,4 @@
+#include "lista.h"
 
 void createEmptyListF(listFiles *L) {
     *L = NULL;
@@ -5,6 +6,14 @@ void createEmptyListF(listFiles *L) {
 
 void createEmptyListH(listHist *L) {
     *L = NULL;
+}
+
+tPosL firstF(listFiles F){
+    return F;
+}
+
+tPosH firstH(listHist H){
+    return H;
 }
 
 tPosL lastF(listFiles L) {
@@ -39,6 +48,15 @@ tPosH previousH(tPosH p, listHist L) {
     return x;
 }
 
+tPosL nextF(tPosL p, listFiles F){
+    return (p->next);
+}
+
+tPosH nextH(tPosL p, listHist H){
+    return (p->next);
+}
+
+
 int countFiles(listFiles *L){
     tPosL x = *L;
     int a = 0;
@@ -53,10 +71,14 @@ char *getItemF(tPosL p,listFiles L) {
     return p->name;
 }
 
+char *getItemH(tPosH p,listHist L) {
+    return p->comand;
+}
+
 tPosL findItemF(int df, listFiles L) {
     tPosL q;
-        for (q = 0; q <= lastF(L); q++) {// Este FOR percorre o array ata a última posición grazas i
-            if (q->df == df) {   // Compárase o elemento a buscar coa lista e devolve a súa posición
+        for (q = firstF(L); q != NULL; q = nextF(q, L)) {
+            if (q->df == df) {
                 return q;
             }
         }
@@ -80,17 +102,29 @@ void insertItemF(int df, int mode, char name[MAXNAME], listFiles *L){
     }
 }
 
-void insertItemH(char name[MAXNAME], listHist *L){
-    tPosH aux,x;
-    stpcpy(aux->name,name);
-    aux->next = NULL;
+bool createNodeF (tPosL *p){//cambiar tPosL -> tPosF
+    *p=malloc(sizeof(**p));
+    return(*p!=NULL);
+}
 
-    if (*L==NULL){
+bool createNodeH (tPosH *p){
+    *p=malloc(sizeof(**p));
+    return(*p!=NULL);
+}
+
+bool insertItemH(char name[MAXNAME], listHist *L){
+    tPosH aux,x;
+    if(createNodeH(&aux)){
+        stpcpy(aux->comand,name);
+        aux->next = NULL;
+        if (*L==NULL)
         *L = aux;
-    } else{
+        else{
         x = lastH(*L);
         x->next = aux;
-    }
+        }
+    }else
+        return false;   
 }
 
 
@@ -111,10 +145,12 @@ void deleteItemF(listFiles *L, int df){
     }
 }
 
-void deleteListH(listHist *L){
-    tPosH x = previousH(lastH(*L), *L);
+void deleteListH(listHist *L) {
+    tPosH x = lastH(*L);
     while (x != NULL) {
-        free(x->next);
-        x = previousH(x, *L);
+        tPosH previous = previousH(x, *L);
+        free(x);
+        x = previous;
     }
+    *L = NULL;
 }
