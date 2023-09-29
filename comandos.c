@@ -1,13 +1,26 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>// Para la función open
+#include <unistd.h>// Para la función close
+#include <time.h>
+#include <sys/utsname.h>
+#include <stdbool.h>
+#include <ctype.h>
+#include <limits.h>
+#include <sys/types.h>
+#include <errno.h>
+
 #include "comandos.h"
 #include "lista.h"
-#include "lista.c"
+
+
 
 void ListOpenFiles(listFiles L) {
-    tPosL x = L;
+    tPosF x = firstF(L);
     int i = 0;
     char aux[15];
-    while (x->next != NULL) {
-        i++;
+    while (x != NULL) {
         if (x->modo == 0100) strcpy(aux, "O_CREAT");
         else if (x->modo == 0200) strcpy(aux, "O_EXCL");
         else if (x->modo == 0) strcpy(aux, " O_RDONLY");
@@ -16,8 +29,8 @@ void ListOpenFiles(listFiles L) {
         else if (x->modo == 02000) strcpy(aux, "O_APPEND");
         else if (x->modo == 01000) strcpy(aux, "O_TRUNC");
         printf("decriptor: %d -> %s %s\n", i, x->name, aux);
-        x = x->next;
-
+        x = nextF(x, L);
+        i++;
     }
 }
 
@@ -67,16 +80,19 @@ void Cmd_dup (char * tr[], listFiles *L){
     int df, duplicado;
     char aux[MAXNAME],*p;
 
-    if (tr[0]==NULL || (df=atoi(tr[0]))<0) { /*no hay parametro*/ /*o el descriptor es menor que 0*/
-        perror("No es posible duplicar el archivo");
+    if (tr[0]==NULL || (df=atoi(tr[0]))<0) {
+        ListOpenFiles(*L);
         return;
     }
     p = getItemF(findItemF(df, *L), *L);
     sprintf (aux,"dup %d (%s)",df, p);
-    insertItemF(df, fcntl(duplicado,F_GETFL), p, L); //CAMBIAR LA ESTRUCTURA FILEINFO
-    dup(df);
-
+    duplicado = dup(df);
+    if (duplicado == -1) {
+        perror("Error al duplicar el archivo");
+        return;
     }
+    insertItemF(df, fcntl(duplicado,F_GETFL), p, L);
+}
 
 
 void authors(char *input_trozos[]){
@@ -286,14 +302,14 @@ void help(char *commands[], char *input_trozos[], int nComands){
 }
 
 
-void quit(bool terminado){
-    terminado = true;
+bool quit(){
+    return true;
 }
 
-void exit_func(bool terminado){
-    terminado = true;
+bool exit_func(){
+    return true;
 }
 
-void bye(bool terminado){
-    terminado = true;
+bool bye(){
+    return true;
 }
