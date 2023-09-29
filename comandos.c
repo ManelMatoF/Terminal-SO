@@ -1,88 +1,11 @@
-void createEmptyList(listFiles *L) {
-    *L = NULL;
-}
-tPosL last(listFiles L) {
-    tPosL x = L;
-    while (x->next != NULL) {
-        x = x->next;
-    }
-    return x;
-}
-
-tPosL previous(tPosL p, listFiles L) {
-    tPosL x = L;
-    while (x->next != NULL && x->next != p) {
-        x = x->next;
-    }
-        return x;
-}
-
-int countFiles(listFiles *L){
-    tPosL x = *L;
-    int a = 0;
-    while (x->next != NULL) {
-        x = x->next;
-        a++;
-    }
-    return a;
-}
-void insertFile(int df, int mode, char name[MAXNAME], listFiles *L){
-    tPosL aux,x;
-    aux->df=df;
-    aux->modo=mode;
-    stpcpy(aux->name,name);
-    aux->next = NULL;
-
-    if (*L==NULL){
-        *L = aux;
-    } else{
-        x = last(*L);
-        x->next = aux;
-    }
-    open(name, mode, 0777);
-}
-
-void ListOpenFiles(listFiles L){
-    tPosL x = L;
-    int i = 0;
-    char aux[15];
-    while (x->next != NULL) {
-        i++;
-        if (x->modo == 0100) strcpy(aux,"O_CREAT");
-        else if (x->modo == 0200) strcpy(aux,"O_EXCL");
-        else if (x->modo == 0) strcpy(aux," O_RDONLY");
-        else if (x->modo == 01) strcpy(aux,"O_WRONLY");
-        else if (x->modo == 02) strcpy(aux,"O_RDWR");
-        else if (x->modo == 02000) strcpy(aux,"O_APPEND");
-        else if (x->modo == 01000) strcpy(aux,"O_TRUNC");
-        printf("decriptor: %d -> %s %s\n", i, x->name, aux);
-       x = x->next;
-    }
-}
-
-void CloseOpenFile(listFiles *L, int df){
-    tPosL x = *L;
-    while (x != NULL || x->df != df) {
-        x = x->next;
-    }
-    if (x == NULL){
-        printf("No se ha podido encontrar el descriptor");
-    }else if (x->df == df){
-        if (x == *L){
-            *L = x->next;
-        }else{
-            previous(x, *L)->next = x->next;
-        }
-        free(x);
-        close(df);
-    }
-}
+#include "comandos.h"
+#include "lista.h"
+#include "lista.c"
 
 void Cmd_open (char * tr[], listFiles *L) {
     int i, df, mode = 0, numFilesOpen;
 
-    if (tr[0] == NULL) { /*no hay parametro*/
-        /* ..............ListarFicherosAbiertos...............*/
+    if (tr[1] == NULL) {
         ListOpenFiles(*L);
         return;
     }
@@ -105,43 +28,42 @@ void Cmd_open (char * tr[], listFiles *L) {
         printf("Anadida entrada %d a la tabla ficheros abiertos..................", numFilesOpen - 1);
     }
 }
-    void Cmd_close (char *tr[], listFiles *L)
-    {
-        int df;
+void Cmd_close (char *tr[], listFiles *L)
+{
+    int df;
 
-        if (tr[0]==NULL || (df=atoi(tr[0]))<0) { /*no hay parametro*/
-            /* ..............ListarFicherosAbiertos...............*/ /*o el descriptor es menor que 0*/
-            ListOpenFiles(*L);
-            return;
-        }
-
-
-        if (close(df)==-1)
-            perror("Imposible cerrar descriptor");
-        else
-            /* ........EliminarDeFicherosAbiertos......*/
-            CloseOpenFile(L,df);
+    if (tr[0]==NULL || (df=atoi(tr[0]))<0) {
+        ListOpenFiles(*L);
+        return;
     }
 
- void Cmd_dup (char * tr[], listFiles *L){
-             int df, duplicado;
-             char aux[MAXNAME],*p;
 
-             if (tr[0]==NULL || (df=atoi(tr[0]))<0) { /*no hay parametro*/ /*o el descriptor es menor que 0*/
-            perror("No es posible duplicar el archivo");
-            return;
-        }
-             p = getItemF(findItemF(df, *L), *L);
-             sprintf (aux,"dup %d (%s)",df, p);
-             insertItemF(df, fcntl(duplicado,F_GETFL), p, L); //CAMBIAR LA ESTRUCTURA FILEINFO
-             dup(df);
+    if (close(df)==-1)
+        perror("Imposible cerrar descriptor");
+    else
+        CloseOpenFile(L,df);
+}
+
+void Cmd_dup (char * tr[], listFiles *L){
+    int df, duplicado;
+    char aux[MAXNAME],*p;
+
+    if (tr[0]==NULL || (df=atoi(tr[0]))<0) { /*no hay parametro*/ /*o el descriptor es menor que 0*/
+        perror("No es posible duplicar el archivo");
+        return;
+    }
+    p = getItemF(findItemF(df, *L), *L);
+    sprintf (aux,"dup %d (%s)",df, p);
+    insertItemF(df, fcntl(duplicado,F_GETFL), p, L); //CAMBIAR LA ESTRUCTURA FILEINFO
+    dup(df);
 
     }
+
 
 void authors(char *input_trozos[]){
     if(strcmp(input_trozos[1], "-n") == 0)
         printf("fernado.losada@udc.es\nmanel.mfernandez@udc.es\n");
-    
+
     else if(strcmp(input_trozos[1], "-l") == 0)
         printf("Fernando Losada Perez\nManel Mato Fernandez\n");
     else printf("fernado.losada@udc.es: Fernando Losada Perez\nmanel.mfernandez@udc.es: Manel Mato Fernandez\n");
@@ -167,6 +89,7 @@ void tiempo(){
 
 void infosys(){
     struct utsname info_sys;
+
     if (uname(&info_sys) != -1){
         printf("Informacion  de la maquina %s\n", info_sys.machine);
         printf("Host Name: %s\n", info_sys.nodename);
@@ -205,18 +128,68 @@ void chdir_func(char *input_trozos[]){
     }
 }
 
-oid repeat_command(char *input_trozos[], /*lista*/){
-
-
+bool *repeat_command(char *input_trozos[], listHist H, char *cadena){
+    tPosH p;
+    char *comand;
+    int i = 0;
+    if(strcmp(input_trozos[1], "") == 0){
+        for(p = firstH(H); p!= NULL; p = nextH(p, H)){
+            comand=getItemH(p, H);
+            printf("%d->%s",i,comand);
+            i++;
+        }
+        return false;
+    }
+    else if(isdigit(input_trozos[1][0])){
+        int n = atoi(input_trozos[1]);
+        p = firstH(H);
+        while( p!= NULL && i<n){
+            i++;
+            p = nextH(p, H);
+        }
+        if(p==NULL){
+             printf("No hay elemento %d en el historico", n);
+            return false;
+        }
+        else{
+            comand = getItemH(p, H);
+            printf("Ejecutando hist (%d): %s", n, comand);
+            cadena = comand;
+            return true;
+        }
+        
+    }
+    else
+        return false;
 }
 
 
 
-void hist(char *input_trozos[]){
-
-
-
-
+void hist(char *input_trozos[], listHist *H){
+    tPosH p;
+    char *comand;
+    int i = 0;
+    if(strcmp(input_trozos[1], "") == 0){
+        for(p = firstH(*H); p!= NULL; p = nextH(p, *H)){
+            comand=getItemH(p, *H);
+            printf("%d->%s",i,comand);
+            i++;
+        }
+    }
+    if(strcmp(input_trozos[1], "-") == 0){
+        if(input_trozos[1][1] == 'c')
+            deleteListH(H);
+        if(isdigit(input_trozos[1][1])){
+            int n = atoi(input_trozos[1] + 1);
+            p = firstH(*H);
+            while( p!= NULL && i<n){
+                comand=getItemH(p, *H);
+                printf("%d->%s",i,comand);
+                i++;
+                p = nextH(p, *H);
+            }
+        }
+    }
 }
 
 void help(char *commands[], char *input_trozos[], int nComands){
@@ -305,4 +278,3 @@ void exit_func(bool terminado){
 void bye(bool terminado){
     terminado = true;
 }
-   
