@@ -223,52 +223,65 @@ void help(char *commands[], char *input_trozos[], int nComands){
     int i;
 
     if(strcmp(input_trozos[1], "") != 0) {
-        for (int i = 0; i < nComands && strcmp(commands[i], input_trozos[1]) != 0; i++);
+        for (i = 0; i < nComands && strcmp(commands[i], input_trozos[1]) != 0; i++);
         switch (i) {
-            case 1 :
+            case 0 :
                 printf("authors [-n|-l]\t Muestra los nombres y/o logins de los autores\n");
                 break;
-            case 2:
+            case 1:
                 printf("id [-p]\t Muestra el pid del shell o de su proceso padre\n");
                 break;
+            case 2:
+                printf("chdir [dir]\t	Cambia (o muestra) el directorio actual del shell\n");
+                break;
             case 3:
-                pritnf("chdir [dir]\t	Cambia (o muestra) el directorio actual del shell\n");
+                printf("date\tMuestra la fecha acual");
                 break;
             case 4:
-                prinf("date\tMuestra la fecha acual");
+                printf("time\tMuestra la hora actual");
                 break;
             case 5:
-                printf("");
+                printf("hist [-c|-N]\tMuestra (o borra)el historico de comandos\n"
+                       "\t-N: muestra los N primeros\n"
+                       "\t-c: borra el historico");
                 break;
             case 6:
-                printf("");
+                printf("command [-N]\tRepite el comando N (del historico)");
                 break;
             case 7:
-                printf("");
+                printf("open fich m1 m2...\tAbre el fichero fich. y lo anade a la lista de ficheros abiertos del shell\n"
+                       "\t m1, m2..es el modo de apertura (or bit a bit de los siguientes).\n"
+                       "\tcr: O_CREAT\tap: O_APPEND\n"
+                       "\tex: O_EXCL \tro: O_RDONLY\n"
+                       "\trw: O_RDWR \two: O_WRONLY\n"
+                       "\ttr: O_TRUNC");
                 break;
             case 8:
-                pritnf("");
+                printf("lose df\tCierra el descriptor df y elimina el correspondiente fichero de la lista de ficheros abiertos");
                 break;
             case 9:
-                printf("");
+                printf("dup df\tDuplica el descriptor de fichero df y anade una nueva entrada a la lista ficheros abiertos");
                 break;
             case 10:
-                printf("");
+                printf("listopen [n]\tLista los ficheros abiertos (al menos n) del shell");
                 break;
             case 11:
-                printf("");
+                printf("infosys \tMuestra informacion de la maquina donde corre el shell");
                 break;
             case 12:
-                printf("");
+                printf("help [cmd|-lt|-T]\tMuestra ayuda sobre los comandos\n"
+                       "\t-lt: lista topics de ayuda\n"
+                       "\t-T topic: lista comandos sobre ese topic\n"
+                       "\tcmd: info sobre el comando cmd");
                 break;
             case 13:
-                printf("");
+                printf("quit \tTermina la ejecucion del shell");
                 break;
             case 14:
-                printf("");
+                printf("exit \tTermina la ejecucion del shell");
                 break;
             case 15:
-                printf("");
+                printf("bye \tTermina la ejecucion del shell");
                 break;
             default :
                 printf("%s no encontrado", input_trozos[1]);
@@ -279,6 +292,7 @@ void help(char *commands[], char *input_trozos[], int nComands){
             printf("%s ", commands[i]);
     }
 }
+
 
 void quit(bool terminado){
     terminado = true;
