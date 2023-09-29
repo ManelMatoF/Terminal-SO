@@ -1,16 +1,24 @@
-all: clean executable execute
+# Nombre del programa final
+TARGET = mi_shell
 
-executable: lista.o mem.o proc.o p0.o
-	gcc -Wall -o p0
+# Compilador y opciones de compilación
+CC = gcc
+CFLAGS = -Wall -Wextra -pedantic -std=c99
+
+# Lista de archivos fuente y objetos
+SRCS = main.c lista.c comandos.c
+OBJS = $(SRCS:.c=.o)
+
+# Reglas de compilación
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $(OBJS)
 
 %.o: %.c
-	gcc -c -g $<
-
-execute:
-	./p0
-
-valgrind: clean executable
-	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=valgrind-report.txt ./p0
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f *.o *.txt p0
+	rm -f $(OBJS) $(TARGET)
+
+.PHONY: all clean
