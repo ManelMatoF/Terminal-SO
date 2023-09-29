@@ -3,8 +3,7 @@
 #include <stdlib.h>
 #include "comandos.h"
 #include "lista.h"
-#include "lista.c"
-#include "comandos.c"
+
 
 #define MAX_CH 250
 #define MAX_TROZOS 10
