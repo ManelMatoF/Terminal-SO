@@ -2,6 +2,25 @@
 #include "lista.h"
 #include "lista.c"
 
+void ListOpenFiles(listFiles L) {
+    tPosL x = L;
+    int i = 0;
+    char aux[15];
+    while (x->next != NULL) {
+        i++;
+        if (x->modo == 0100) strcpy(aux, "O_CREAT");
+        else if (x->modo == 0200) strcpy(aux, "O_EXCL");
+        else if (x->modo == 0) strcpy(aux, " O_RDONLY");
+        else if (x->modo == 01) strcpy(aux, "O_WRONLY");
+        else if (x->modo == 02) strcpy(aux, "O_RDWR");
+        else if (x->modo == 02000) strcpy(aux, "O_APPEND");
+        else if (x->modo == 01000) strcpy(aux, "O_TRUNC");
+        printf("decriptor: %d -> %s %s\n", i, x->name, aux);
+        x = x->next;
+
+    }
+}
+
 void Cmd_open (char * tr[], listFiles *L) {
     int i, df, mode = 0, numFilesOpen;
 
