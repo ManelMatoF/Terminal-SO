@@ -1,3 +1,7 @@
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "lista.h"
 
 void createEmptyListF(listFiles *L) {
@@ -8,16 +12,16 @@ void createEmptyListH(listHist *L) {
     *L = NULL;
 }
 
-tPosL firstF(listFiles F){
-    return F;
+tPosF firstF(listFiles L){
+    return L;
 }
 
-tPosH firstH(listHist H){
-    return H;
+tPosH firstH(listHist L){
+    return L;
 }
 
-tPosL lastF(listFiles L) {
-    tPosL x = L;
+tPosF lastF(listFiles L) {
+    tPosF x = L;
     while (x->next != NULL) {
         x = x->next;
     }
@@ -32,8 +36,8 @@ tPosH lastH(listHist L) {
     return x;
 }
 
-tPosL previousF(tPosL p, listFiles L) {
-    tPosL x = L;
+tPosF previousF(tPosF p, listFiles L) {
+    tPosF x = L;
     while (x->next != NULL && x->next != p) {
         x = x->next;
     }
@@ -48,17 +52,17 @@ tPosH previousH(tPosH p, listHist L) {
     return x;
 }
 
-tPosL nextF(tPosL p, listFiles F){
+tPosF nextF(tPosF p, listFiles L){
     return (p->next);
 }
 
-tPosH nextH(tPosL p, listHist H){
+tPosH nextH(tPosF p, listHist L){
     return (p->next);
 }
 
 
 int countFiles(listFiles *L){
-    tPosL x = *L;
+    tPosF x = *L;
     int a = 0;
     while (x->next != NULL) {
         x = x->next;
@@ -67,7 +71,7 @@ int countFiles(listFiles *L){
     return a;
 }
 
-char *getItemF(tPosL p,listFiles L) {
+char *getItemF(tPosF p,listFiles L) {
     return p->name;
 }
 
@@ -75,8 +79,8 @@ char *getItemH(tPosH p,listHist L) {
     return p->comand;
 }
 
-tPosL findItemF(int df, listFiles L) {
-    tPosL q;
+tPosF findItemF(int df, listFiles L) {
+    tPosF q;
         for (q = firstF(L); q != NULL; q = nextF(q, L)) {
             if (q->df == df) {
                 return q;
@@ -85,10 +89,18 @@ tPosL findItemF(int df, listFiles L) {
         return NULL;
     }
 
+bool createNodeF (tPosF *p){//cambiar tPosL -> tPosF
+    *p=malloc(sizeof(**p));
+    return(*p!=NULL);
+}
 
+bool createNodeH (tPosH *p){
+    *p=malloc(sizeof(**p));
+    return(*p!=NULL);
+}
 
 void insertItemF(int df, int mode, char name[MAXNAME], listFiles *L){
-    tPosL aux,x;
+    tPosF aux,x;
     aux->df=df;
     aux->modo=mode;
     stpcpy(aux->name,name);
@@ -100,16 +112,6 @@ void insertItemF(int df, int mode, char name[MAXNAME], listFiles *L){
         x = lastF(*L);
         x->next = aux;
     }
-}
-
-bool createNodeF (tPosL *p){//cambiar tPosL -> tPosF
-    *p=malloc(sizeof(**p));
-    return(*p!=NULL);
-}
-
-bool createNodeH (tPosH *p){
-    *p=malloc(sizeof(**p));
-    return(*p!=NULL);
 }
 
 bool insertItemH(char name[MAXNAME], listHist *L){
@@ -129,8 +131,8 @@ bool insertItemH(char name[MAXNAME], listHist *L){
 
 
 void deleteItemF(listFiles *L, int df){
-    tPosL x = *L;
-    while (x != NULL || x->df != df) {
+    tPosF x = *L;
+    while (x != NULL && x->df != df) {
         x = x->next;
     }
     if (x == NULL){
