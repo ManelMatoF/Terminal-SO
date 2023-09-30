@@ -1,3 +1,6 @@
+
+//Fernando Losada Pérez fernando.losada@udc.es
+//Manel Mato Fernández manel.mfernandez@udc.es
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -16,8 +19,8 @@ void leerEntrada(char * input){
     fgets(input, MAX_CH, stdin);//cuantos caracteres leer (preguntar)
 }
 
-int TrocearCadena(char *cadena, char *trozos[]){
-    int i=1;
+int TrocearCadena(char * cadena, char * trozos[])
+{ int i=1;
     if ((trozos[0]=strtok(cadena," \n\t"))==NULL)
         return 0;
     while ((trozos[i]=strtok(NULL," \n\t"))!=NULL)
@@ -25,14 +28,22 @@ int TrocearCadena(char *cadena, char *trozos[]){
     return i;
 }
 
-int encontrarComands(char *input_trozos[],char *comands[]){
-    int i;
-    for(i=0; i<MAX_COMANDS && strcmp(comands[i], input_trozos[i]) != 0; i++);
-    if(i==MAX_COMANDS && strcmp(comands[i], input_trozos[i]) != 0)
-        return -1;
-    else
-        return i;
+int encontrarComands(char *input_trozos[], char *comands[]) {
+    for (int i = 0; i < MAX_COMANDS; i++) {
+        int j;
+        for (j = 0; input_trozos[j] != NULL && comands[i] != NULL; j++) {
+            if (strcmp(comands[i], input_trozos[j]) != 0) {
+                break;  // Las cadenas son diferentes, salir del bucle interno
+            }
+        }
+        if (input_trozos[j] == NULL && comands[i] == NULL) {
+            // Todas las cadenas coincidieron, este es el comando
+            return i;
+        }
+    }
+    return -1;  // Comando no encontrado
 }
+
 
 void procesarEntrada(char *cadena, char *input_trozos[],char *comands[], bool *terminado, listHist *H, listFiles *F){
     insertItemH(cadena, H);
@@ -90,67 +101,29 @@ void procesarEntrada(char *cadena, char *input_trozos[],char *comands[], bool *t
             break;
         default:
             printf("No ejecutado: No such file or directory\n");
-            break; 
+            break;
     }
 }
 
-void insertComands(char *comands[]){
-    for (int i = 0; i < MAX_COMANDS; i++){
-        comands[i] = malloc(MAX_CH * sizeof(char));
-        switch(i){
-            case 0 :
-                comands[i]="authors";
-                break;
-            case 1 :
-                comands[i]="pid";
-                break;
-            case 2 :
-                comands[i]="chdir";
-                break;
-            case 3 :
-                comands[i]="date";
-            break;
-            case 4 :
-                comands[i]="time";
-                break;
-            case 5 :
-                comands[i]="hist";
-                break;
-            case 6 :
-                comands[i]="comand";
-                break;
-            case 7 :
-                comands[i]="open";
-                break;
-            case 8 :
-                comands[i]="close";
-                break;
-            case 9 :
-                comands[i]="dup";
-                break;
-            case 10 :
-                comands[i]="listopen";
-                break;
-            case 11 :
-                comands[i]="infosys";
-                break;
-            case 12 :
-                comands[i]="help";
-                break;
-            case 13 :
-                comands[i]="quit";
-                break;
-            case 14 :
-                comands[i]="exit";
-                break;
-            case 15 :
-                comands[i]="bye";
-                break;
-            default:
-                break;
-        }
+void insertComands(char *comands[]) {
+
+    comands[0] = "authors";
+    comands[1] = "pid";
+    comands[2] = "chdir";
+    comands[3] =  "date";
+    comands[4] = "time";
+    comands[5] = "hist";
+    comands[6] = "comand";
+    comands[7] = "open";
+    comands[8] = "close";
+    comands[9] = "dup";
+    comands[10] = "listopen";
+    comands[11] = "infosys";
+    comands[12] = "help";
+    comands[13] = "quit";
+    comands[14] = "exit";
+    comands[15] = "bye";
     }
-}
 
 int main(){
     char input[MAX_CH];
@@ -164,6 +137,10 @@ int main(){
 
     for (int i = 0; i < MAX_TROZOS; i++)
         input_trozos[i] = malloc(MAX_CH * sizeof(char));
+
+    for (int i = 0; i < MAX_COMANDS; i++)
+        comands[i] = malloc(MAX_CH * sizeof(char));
+
     insertComands(comands);
 
     while(!terminado){
