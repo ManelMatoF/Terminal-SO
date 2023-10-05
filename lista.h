@@ -35,8 +35,9 @@ char *getItemF(tPosF p, listFiles L);
 char *getItemH(tPosH p, listHist L);
 tPosF findItemF(int df, listFiles L);
 void insertItemF(int df, int mode, char name[MAXNAME], listFiles *L);
-bool insertItemH(char name[MAXNAME], listHist *L);
+void insertItemH(char name[MAXNAME], listHist *L);
 void deleteItemF(listFiles *L, int df);
 void deleteListH(listHist *L);
+void deleteListF(listFiles *L);
 
 #endif
