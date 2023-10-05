@@ -37,33 +37,37 @@ tPosH lastH(listHist L) {
 }
 
 tPosF previousF(tPosF p, listFiles L) {
-    tPosF x = L;
-    while (x->next != NULL && x->next != p) {
-        x = x->next;
+    if(p == L)
+        return NULL;
+    else{
+        tPosF q;
+        for(q=L;q->next!=p;q=q->next);
+        return q;
     }
-    return x;
 }
 
 tPosH previousH(tPosH p, listHist L) {
-    tPosH x = L;
-    while (x->next != NULL && x->next != p) {
-        x = x->next;
+    if(p == L)
+        return NULL;
+    else{
+        tPosH q;
+        for(q=L;q->next!=p;q=q->next);
+        return q;
     }
-    return x;
 }
 
 tPosF nextF(tPosF p, listFiles L){
     return (p->next);
 }
 
-tPosH nextH(tPosF p, listHist L){
+tPosH nextH(tPosH p, listHist L){
     return (p->next);
 }
 
 
 int countFiles(listFiles *L){
     tPosF x = *L;
-    int a = 0;
+    int a = 1;
     while (x->next != NULL) {
         x = x->next;
         a++;
@@ -101,23 +105,24 @@ bool createNodeH (tPosH *p){
 
 void insertItemF(int df, int mode, char name[MAXNAME], listFiles *L){
     tPosF aux,x;
-    aux->df=df;
-    aux->modo=mode;
-    stpcpy(aux->name,name);
-    aux->next = NULL;
-
-    if (*L==NULL){
-        *L = aux;
-    } else{
-        x = lastF(*L);
-        x->next = aux;
-    }
+    if(createNodeF(&aux)){
+        aux->df=df;
+        aux->modo=mode;
+        strcpy(aux->name,name);
+        aux->next = NULL;
+        if (*L==NULL){
+            *L = aux;
+        } else{
+            x = lastF(*L);
+            x->next = aux;
+        }
+    } 
 }
 
-bool insertItemH(char name[MAXNAME], listHist *L){
+void insertItemH(char name[MAXNAME], listHist *L){
     tPosH aux,x;
     if(createNodeH(&aux)){
-        stpcpy(aux->comand,name);
+        strcpy(aux->comand,name);
         aux->next = NULL;
         if (*L==NULL)
         *L = aux;
@@ -125,8 +130,7 @@ bool insertItemH(char name[MAXNAME], listHist *L){
         x = lastH(*L);
         x->next = aux;
         }
-    }else
-        return false;   
+    }
 }
 
 
@@ -135,24 +139,38 @@ void deleteItemF(listFiles *L, int df){
     while (x != NULL && x->df != df) {
         x = x->next;
     }
-    if (x == NULL){
-        printf("No se ha podido encontrar el descriptor");
-    }else if (x->df == df){
-        if (x == *L){
+    if (x == NULL)
+        printf("No se ha podido encontrar el descriptor\n");
+    else{
+        if (x == firstF(*L)){
             *L = x->next;
         }else{
             previousF(x, *L)->next = x->next;
         }
         free(x);
+    }    
+}
+
+void deleteListF(listFiles *L){
+    if(*L != NULL){
+        tPosF x = lastF(*L);
+        while (x != NULL) {
+            tPosF previous = previousF(x, *L);
+            free(x);
+            x = previous;
+        }
+        *L = NULL;
     }
 }
 
 void deleteListH(listHist *L) {
-    tPosH x = lastH(*L);
-    while (x != NULL) {
-        tPosH previous = previousH(x, *L);
-        free(x);
-        x = previous;
+    if(*L != NULL){
+        tPosH x = lastH(*L);
+        while (x != NULL) {
+            tPosH previous = previousH(x, *L);
+            free(x);
+            x = previous;
+        }
+        *L = NULL;
     }
-    *L = NULL;
 }
