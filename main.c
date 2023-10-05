@@ -1,13 +1,14 @@
-
 //Fernando Losada Pérez fernando.losada@udc.es
 //Manel Mato Fernández manel.mfernandez@udc.es
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <fcntl.h>
 #include "comandos.h"
 #include "lista.h"
 
-#define MAX_CH 250
+#define MAX_CH 200
 #define MAX_TROZOS 10
 #define MAX_COMANDS 16
 
@@ -15,49 +16,50 @@ void imprimirPromt(){
     printf("-> ");
 }
 
-void leerEntrada(char * input){
+void leerEntrada(char *input){
     fgets(input, MAX_CH, stdin);//cuantos caracteres leer (preguntar)
 }
 
-int TrocearCadena(char * cadena, char * trozos[])
-{ int i=1;
-    if ((trozos[0]=strtok(cadena," \n\t"))==NULL)
+int TrocearCadena(char *cadena, char **input_trozos){
+    int i=1;
+    if ((input_trozos[0]=strtok(cadena," \n\t"))==NULL)
         return 0;
-    while ((trozos[i]=strtok(NULL," \n\t"))!=NULL)
+    while ((input_trozos[i]=strtok(NULL," \n\t"))!=NULL)
         i++;
     return i;
 }
 
-int encontrarComands(char *input_trozos[], char *comands[]) {
-    for (int i = 0; i < MAX_COMANDS; i++) {
-        int j;
-        for (j = 0; input_trozos[j] != NULL && comands[i] != NULL; j++) {
-            if (strcmp(comands[i], input_trozos[j]) != 0) {
-                break;  // Las cadenas son diferentes, salir del bucle interno
-            }
-        }
-        if (input_trozos[j] == NULL && comands[i] == NULL) {
-            // Todas las cadenas coincidieron, este es el comando
+int encontrarComands(char **input_trozos, char **comands, int n) {
+    int i = 0;
+    if(n>0){
+        while (i < MAX_COMANDS - 1 && (strcmp(comands[i], input_trozos[0]) != 0))
+        i++;                
+        if(strcmp(comands[i], input_trozos[0]) == 0)
             return i;
-        }
+        else
+            return -1;
     }
-    return -1;  // Comando no encontrado
+    else
+        return -1;
 }
 
 
-void procesarEntrada(char *cadena, char *input_trozos[],char *comands[], bool *terminado, listHist *H, listFiles *F){
-    insertItemH(cadena, H);
-    TrocearCadena(cadena, input_trozos);
-    int cmd = encontrarComands(input_trozos, comands);
+void procesarEntrada(char *input, char **input_trozos,char **comands, bool *terminado, listHist *H, listFiles *F, int *bucle){
+    char copy_input[MAX_CH];
+    if(*bucle < 1)
+        insertItemH(input, H);
+    strcpy(copy_input, input);
+    int input_num = TrocearCadena(copy_input, input_trozos);
+    int cmd = encontrarComands(input_trozos, comands, input_num);
     switch(cmd){
         case 0:
-            authors(input_trozos);
+            authors(input_trozos, input_num);
             break;
         case 1:
-            pid(input_trozos);
+            pid(input_trozos, input_num);
             break;
         case 2:
-            chdir_func(input_trozos);
+            chdir_func(input_trozos, input_num);
             break;
         case 3:
             date();
@@ -66,20 +68,20 @@ void procesarEntrada(char *cadena, char *input_trozos[],char *comands[], bool *t
             tiempo();
             break;
         case 5:
-            hist(input_trozos, H);
+            hist(input_trozos, input_num, H);
             break;
         case 6:
-            if(repeat_command(input_trozos, *H, cadena))
-                procesarEntrada(cadena, input_trozos, comands, terminado, H, F);//probar
+            if(repeat_command(input_trozos, input_num, *H, input, bucle))
+                procesarEntrada(input, input_trozos, comands, terminado, H, F, bucle);
             break;
         case 7:
-            Cmd_open(input_trozos, F);
+            Cmd_open(input_trozos + 1, F);
             break;
         case 8:
-            Cmd_close(input_trozos, F);
+            Cmd_close(input_trozos + 1, F);
             break;
         case 9:
-            Cmd_dup(input_trozos, F);
+            Cmd_dup(input_trozos + 1, F);
             break;
         case 10:
             ListOpenFiles(*F);
@@ -88,7 +90,7 @@ void procesarEntrada(char *cadena, char *input_trozos[],char *comands[], bool *t
             infosys();
             break;
         case 12:
-            help(comands, input_trozos, MAX_COMANDS);
+            help(comands, input_trozos, input_num, MAX_COMANDS);
             break;
         case 13:
             quit(terminado);
@@ -100,12 +102,15 @@ void procesarEntrada(char *cadena, char *input_trozos[],char *comands[], bool *t
             bye(terminado);
             break;
         default:
-            printf("No ejecutado: No such file or directory\n");
+            if(input_num == 0)
+                printf("\n");
+            else
+                printf("No ejecutado: No such file or directory\n");
             break;
     }
 }
 
-void insertComands(char *comands[]) {
+void insertComands(char **comands) {
 
     comands[0] = "authors";
     comands[1] = "pid";
@@ -126,35 +131,51 @@ void insertComands(char *comands[]) {
     }
 
 int main(){
-    char input[MAX_CH];
-    char *input_trozos[MAX_TROZOS], *comands[MAX_COMANDS];
+    char input[MAX_CH], name[MAX_CH];
+    //char *input_trozos[MAX_TROZOS], *comands[MAX_COMANDS];
     bool terminado = false;
+    int bucle = 0;
+    char **input_trozos = (char **)malloc(MAX_TROZOS * sizeof(char*));
+    char **comands = (char **)malloc(MAX_COMANDS * sizeof(char*));
+
+    /*for (int i = 0; i < MAX_TROZOS; i++)
+        input_trozos[i] = (char *) malloc(MAX_CH * sizeof(char));*/
+    /*for (int i = 0; i < MAX_COMANDS; i++)
+        comands[i] = (char *) malloc(MAX_CH * sizeof(char));*/
 
     listHist H;
     listFiles F;
     createEmptyListF(&F);
     createEmptyListH(&H);
 
-    for (int i = 0; i < MAX_TROZOS; i++)
-        input_trozos[i] = malloc(MAX_CH * sizeof(char));
-
-    for (int i = 0; i < MAX_COMANDS; i++)
-        comands[i] = malloc(MAX_CH * sizeof(char));
+    insertItemF(0, 02, strcpy(name, "entrada estandar"), &F);
+    insertItemF(1, 02, strcpy(name, "salida estandar"), &F);
+    insertItemF(2, 02, strcpy(name, "error estandar"), &F);
 
     insertComands(comands);
 
     while(!terminado){
         imprimirPromt();
         leerEntrada(input);
-        procesarEntrada(input, input_trozos,comands, &terminado, &H, &F);
+        procesarEntrada(input, input_trozos,comands, &terminado, &H, &F, &bucle);
     }
 
-    for (int i = 0; i < MAX_TROZOS; i++) {
-        free(input_trozos[i]);
-    }
-    for (int i = 0; i < MAX_COMANDS; i++) {
-        free(comands[i]);
-    }
+    /*for (int i = 0; i < MAX_TROZOS; i++){
+        if(input_trozos[i] != NULL)
+            free(input_trozos[i]);
+    }*/
+    
+    /*for (int i = 0; i < MAX_COMANDS; i++){
+        if(comands[i] != NULL)
+            free(comands[i]);
+    }*/
+    
+
+    free(input_trozos);
+    free(comands);
+    
+    deleteListH(&H);
+    deleteListF(&F);
 
     return 0;
 }
