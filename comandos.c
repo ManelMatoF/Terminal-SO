@@ -11,11 +11,27 @@
 
 #include "comandos.h"
 
+tPosL findFiles(int df, tList L){
+    if(L != NULL){
+        tPosL p = first(L);
+        FileInfo *f;
+        f = (FileInfo*)(getItem(p));
+        while(p!=NULL && f->df != df){
+            p=next(p);
+            f = (FileInfo*)(getItem(p));   
+        }
+        return p;
+    }
+    return NULL;
+    
+}
 
-void ListOpenFiles(listFiles L) {
-    tPosF x = firstF(L);
+void ListOpenFiles(tList L) {
+    tPosL p = first(L);
+    FileInfo *x;
     char aux[15];
-    while (x != NULL) {
+    while (p != NULL) {
+        x = (FileInfo*)(getItem(p));
         if (x->modo == 0100) strcpy(aux, "O_CREAT");
         else if (x->modo == 0200) strcpy(aux, "O_EXCL");
         else if (x->modo == 0) strcpy(aux, " O_RDONLY");
@@ -24,12 +40,12 @@ void ListOpenFiles(listFiles L) {
         else if (x->modo == 02000) strcpy(aux, "O_APPEND");
         else if (x->modo == 01000) strcpy(aux, "O_TRUNC");
         printf("decriptor: %d -> %s %s\n", x->df, x->name, aux);
-        x = nextF(x, L);
+        p = next(p);
     }
 }
 
-void Cmd_open (char * tr[], listFiles *L) {
-    int i, df, mode = 0, numFilesOpen;
+void Cmd_open (char * tr[], tList *L) {
+    int i, df, mode = 0;
 
     if (tr[0] == NULL) {
         ListOpenFiles(*L);
@@ -48,12 +64,21 @@ void Cmd_open (char * tr[], listFiles *L) {
     if ((df = open(tr[0], mode, 0777)) == -1)
         perror("Imposible abrir fichero");
     else {
-        insertItemF(df, mode, tr[0], L);
-        numFilesOpen = countFiles(L);
-        printf("Anadida entrada %d a la tabla ficheros abiertos\n", numFilesOpen - 1);
+        FileInfo *f = malloc(sizeof(FileInfo));
+        size_t fileSize = sizeof(FileInfo);
+        f->df = df;
+        f->modo = mode;
+        strcpy(f->name, tr[0]);
+        if(!insertItem(f, fileSize, L)){
+            perror("Imposible abrir fichero");
+            close(df);
+            free(f);
+        }
+        free(f);
+        printf("Anadida entrada %d a la tabla ficheros abiertos\n", df);
     }
 }
-void Cmd_close (char *tr[], listFiles *L){
+void Cmd_close (char *tr[], tList *L){
     int df;
     
     if(tr[0]==NULL){
@@ -69,13 +94,18 @@ void Cmd_close (char *tr[], listFiles *L){
     
     if (close(df)==-1)
         perror("Imposible cerrar descriptor");
-    else
-        deleteItemF(L,df);
+    else{
+        tPosL p = findFiles(df, *L);
+        deleteItem(p, L);
+    }
+        
 }
 
-void Cmd_dup (char * tr[], listFiles *L){
+void Cmd_dup (char * tr[], tList *L){
     int df, duplicado;
-    char aux[MAXNAME],*p;
+    char aux[MAXNAME+50];
+    FileInfo *f = malloc(sizeof(FileInfo));
+    size_t fileSize = sizeof(FileInfo);
 
     if(tr[0]==NULL){
         ListOpenFiles(*L);
@@ -87,14 +117,22 @@ void Cmd_dup (char * tr[], listFiles *L){
             return;
         }
     }
-    p = getItemF(findItemF(df, *L), *L);
-    sprintf (aux,"dup %d (%s)",df, p);
+    memcpy(f, (FileInfo*)getItem(findFiles(df, *L)), fileSize);
+    sprintf (aux,"dup %d (%s)",df, f->name);
     duplicado = dup(df);
     if (duplicado == -1) {
         perror("Error al duplicar el archivo");
         return;
     }
-    insertItemF(df + 1, fcntl(duplicado,F_GETFL), aux, L);
+    f->df = df + 1;
+    f->modo = fcntl(duplicado,F_GETFL);
+    strcpy(f->name,aux);
+    if(!insertItem(f, fileSize, L)){
+        perror("Error al duplicar el archivo");
+        close(df);
+        free(f);
+    }
+    free(f);
 }
 
 
@@ -102,10 +140,10 @@ void authors(char *input_trozos[], int n){
     if(n == 1)
         printf("fernado.losada@udc.es: Fernando Losada Perez\nmanel.mfernandez@udc.es: Manel Mato Fernandez\n");
     else{
-        if(strcmp(input_trozos[1], "-n") == 0)
+        if(strcmp(input_trozos[1], "-l") == 0)
         printf("fernado.losada@udc.es\nmanel.mfernandez@udc.es\n");
 
-        if(strcmp(input_trozos[1], "-l") == 0)
+        if(strcmp(input_trozos[1], "-n") == 0)
             printf("Fernando Losada Perez\nManel Mato Fernandez\n");
     }
 }
@@ -169,13 +207,13 @@ void chdir_func(char *input_trozos[], int n){
     }
 }
 
-bool repeat_command(char *input_trozos[], int n, listHist H, char *cadena, int *bucle){
-    tPosH p;
+bool repeat_command(char *input_trozos[], int n, tList H, char *cadena, int *bucle){
+    tPosL p;
     char *comand;
     int i = 0;
     if(n == 1){
-        for(p = firstH(H); p!= NULL; p = nextH(p, H)){
-            comand=getItemH(p, H);
+        for(p = first(H); p!= NULL; p = next(p)){
+            comand=(char*)getItem(p);
             printf("%d->%s",i,comand);
             i++;
         }
@@ -183,17 +221,17 @@ bool repeat_command(char *input_trozos[], int n, listHist H, char *cadena, int *
     }
     else if(isdigit(input_trozos[1][0])){
         int num = atoi(input_trozos[1]);
-        p = firstH(H);
+        p = first(H);
         while( p!= NULL && i<num){
             i++;
-            p = nextH(p, H);
+            p = next(p);
         }
         if(p == NULL){
             printf("No hay elemento %d en el historico\n", num);
             return false;
         }
         else{
-            comand = getItemH(p, H);
+            comand = (char*)getItem(p);
             printf("Ejecutando hist (%d): %s", num, comand);
             if(strcmp(comand, cadena)==0)
                 (*bucle)++;
@@ -215,13 +253,13 @@ bool repeat_command(char *input_trozos[], int n, listHist H, char *cadena, int *
 
 
 
-void hist(char *input_trozos[], int n, listHist *H){
-    tPosH p;
+void hist(char *input_trozos[], int n, tList *H){
+    tPosL p;
     char *comand;
     int i = 0;
     if(n == 1){
-        for(p = firstH(*H); p!= NULL; p = nextH(p, *H)){
-            comand=getItemH(p, *H);
+        for(p = first(*H); p!= NULL; p = next(p)){
+            comand = (char *)getItem(p);
             printf("%d->%s",i,comand);
             i++;
         }
@@ -229,15 +267,15 @@ void hist(char *input_trozos[], int n, listHist *H){
     else{
         if(input_trozos[1][0] == '-'){
             if(input_trozos[1][1] == 'c')
-                deleteListH(H);
+                deleteList(H);
             else if(isdigit(input_trozos[1][1])){
                 int n = atoi(input_trozos[1] + 1);
-                p = firstH(*H);
+                p = first(*H);
                 while( p!= NULL && i<n){
-                    comand=getItemH(p, *H);
+                    comand=(char*)getItem(p);
                     printf("%d->%s",i,comand);
                     i++;
-                    p = nextH(p, *H);
+                    p = next(p);
                 }
             }
         }
@@ -307,6 +345,27 @@ void help(char *commands[], char *input_trozos[], int n, int nComands){
                 printf("exit \tTermina la ejecucion del shell\n");
                 break;
             case 15:
+                printf("bye \tTermina la ejecucion del shell\n");
+                break;
+            case 16:
+                printf("create [-f] [name] \tCrea un directorio o un fichero (-f)\n");
+                break;
+            case 17:
+                printf("stat [-long][-link][-acc] name1 name2 .. \tlista ficheros;\n"
+                    "\t-long: listado largo\n"
+                    "\t-acc: acesstime\n"
+                    "\t-link: si es enlace simbolico, el path contenido\n");
+                break;
+            case 18:
+                printf("\n");
+                break;
+            case 19:
+                printf("\n");
+                break;
+            case 20:
+                printf("\n");
+                break;
+            case 21:
                 printf("bye \tTermina la ejecucion del shell\n");
                 break;
             default :
