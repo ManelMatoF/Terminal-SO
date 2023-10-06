@@ -1,6 +1,5 @@
 //Fernando Losada Pérez fernando.losada@udc.es
 //Manel Mato Fernández manel.mfernandez@udc.es
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -10,7 +9,7 @@
 
 #define MAX_CH 200
 #define MAX_TROZOS 10
-#define MAX_COMANDS 16
+#define MAX_COMANDS 21
 
 void imprimirPromt(){
     printf("-> ");
@@ -44,10 +43,16 @@ int encontrarComands(char **input_trozos, char **comands, int n) {
 }
 
 
-void procesarEntrada(char *input, char **input_trozos,char **comands, bool *terminado, listHist *H, listFiles *F, int *bucle){
+void procesarEntrada(char *input, char **input_trozos,char **comands, bool *terminado, tList *H, tList *F, int *bucle){
     char copy_input[MAX_CH];
-    if(*bucle < 1)
-        insertItemH(input, H);
+    if(*bucle < 1){
+        size_t inputSize = strlen(input) + 1;
+        if(!insertItem(input, inputSize, H)){
+            perror("No se ha podido insertar en Historial");
+            return;
+        }
+    }
+       
     strcpy(copy_input, input);
     int input_num = TrocearCadena(copy_input, input_trozos);
     int cmd = encontrarComands(input_trozos, comands, input_num);
@@ -128,29 +133,39 @@ void insertComands(char **comands) {
     comands[13] = "quit";
     comands[14] = "exit";
     comands[15] = "bye";
+    comands[16] = "create";
+    comands[17] = "stat";
+    comands[18] = "list";
+    comands[19] = "delete";
+    comands[20] = "deltree";
+
     }
+
+void prelist_files(int df, int modo, char name[MAX_CH], tList *F, FileInfo *f, size_t fileSize){
+    f->df=df;
+    strcpy(f->name, name);
+    f->modo=modo;
+    insertItem(f,fileSize, F);
+
+}
 
 int main(){
     char input[MAX_CH], name[MAX_CH];
-    //char *input_trozos[MAX_TROZOS], *comands[MAX_COMANDS];
     bool terminado = false;
     int bucle = 0;
     char **input_trozos = (char **)malloc(MAX_TROZOS * sizeof(char*));
     char **comands = (char **)malloc(MAX_COMANDS * sizeof(char*));
 
-    /*for (int i = 0; i < MAX_TROZOS; i++)
-        input_trozos[i] = (char *) malloc(MAX_CH * sizeof(char));*/
-    /*for (int i = 0; i < MAX_COMANDS; i++)
-        comands[i] = (char *) malloc(MAX_CH * sizeof(char));*/
+    tList H;
+    tList F;
+    createEmptyList(&F);
+    createEmptyList(&H);
 
-    listHist H;
-    listFiles F;
-    createEmptyListF(&F);
-    createEmptyListH(&H);
-
-    insertItemF(0, 02, strcpy(name, "entrada estandar"), &F);
-    insertItemF(1, 02, strcpy(name, "salida estandar"), &F);
-    insertItemF(2, 02, strcpy(name, "error estandar"), &F);
+    FileInfo *f0 = malloc(sizeof(FileInfo));
+    size_t fileSize = sizeof(FileInfo);
+    prelist_files(0, 02, strcpy(name, "entrada estandar"), &F, f0, fileSize);
+    prelist_files(1, 02, strcpy(name, "salida estandar"), &F, f0, fileSize);
+    prelist_files(2, 02, strcpy(name, "error estandar"), &F, f0, fileSize);
 
     insertComands(comands);
 
@@ -158,24 +173,13 @@ int main(){
         imprimirPromt();
         leerEntrada(input);
         procesarEntrada(input, input_trozos,comands, &terminado, &H, &F, &bucle);
-    }
-
-    /*for (int i = 0; i < MAX_TROZOS; i++){
-        if(input_trozos[i] != NULL)
-            free(input_trozos[i]);
-    }*/
-    
-    /*for (int i = 0; i < MAX_COMANDS; i++){
-        if(comands[i] != NULL)
-            free(comands[i]);
-    }*/
-    
+    }    
 
     free(input_trozos);
     free(comands);
-    
-    deleteListH(&H);
-    deleteListF(&F);
+    deleteList(&H);
+    deleteList(&F);
+    free(f0);
 
     return 0;
 }
