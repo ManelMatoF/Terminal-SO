@@ -380,6 +380,302 @@ void help(char *commands[], char *input_trozos[], int n, int nComands){
 }
 
 
+/*char LetraTF(mode_t m) {//FUNCION AUXILIAR
+    switch (m & S_IFMT) {
+        case S_IFSOCK:
+            return 's';
+        case S_IFLNK:
+            return 'l';
+        case S_IFREG:
+            return '-';
+        case S_IFBLK:
+            return 'b';
+        case S_IFDIR:
+            return 'd';
+        case S_IFCHR:
+            return 'c';
+        case S_IFIFO:
+            return 'p';
+        default:
+            return '?';
+    }
+}
+
+char *ConvierteModo2(mode_t m) {//FUNCION AUXILIAR
+    static char permisos[12];
+    strcpy(permisos, "---------- ");
+
+    permisos[0] = LetraTF(m);
+    if (m & S_IRUSR) permisos[1] = 'r';
+    if (m & S_IWUSR) permisos[2] = 'w';
+    if (m & S_IXUSR) permisos[3] = 'x';
+    if (m & S_IRGRP) permisos[4] = 'r';
+    if (m & S_IWGRP) permisos[5] = 'w';
+    if (m & S_IXGRP) permisos[6] = 'x';
+    if (m & S_IROTH) permisos[7] = 'r';
+    if (m & S_IWOTH) permisos[8] = 'w';
+    if (m & S_IXOTH) permisos[9] = 'x';
+    if (m & S_ISUID) permisos[3] = 's';
+    if (m & S_ISGID) permisos[6] = 's';
+    if (m & S_ISVTX) permisos[9] = 't';
+
+    return permisos;
+}
+*/
+bool IsOption(const char *cadena, const char *options[], int numOptions) {//FUNCION AUXILIAR
+    for (int i = 0; i < numOptions; i++) {
+        if (strcmp(cadena, options[i]) == 0) {
+            return true;  // Es una opción válida
+        }
+    }
+    return false;  // No es una opción válida
+}
+
+void Stat(char *input_trozos[]) {
+    bool empty = true;
+    const char *options[] = {"-long", "-link", "-acc"};
+    int numOptions = sizeof(options) / sizeof(options[0]);
+
+    for (int i = 1; input_trozos[i] != NULL; i++) {
+        if(IsOption(input_trozos[i], options, numOptions))
+            continue;
+
+        struct stat file_stat;
+        if (stat(input_trozos[i], &file_stat) == -1){
+            printf(" ****error al acceder a %s :No such file or directory\n", input_trozos[i]);
+            empty = false;
+            continue;
+        }
+
+
+        empty = false;
+
+        if (strcmp(input_trozos[1], "-long") == 0) {
+            struct passwd *pwd = getpwuid(file_stat.st_uid);
+            /* printf("%s\t%ld\t(%ld)\t%s\t%s\t%lld\t%s\n", ctime(&file_stat.st_atime),
+                   file_stat.st_nlink, file_stat.st_ino, pwd->pw_name,
+                   ConvierteModo2(file_stat.st_mode), (long long) file_stat.st_size, input_trozos[i]); */
+        } else if (strcmp(input_trozos[1], "-acc") == 0) {
+            printf("%s%-8lld%-4s\n", ctime(&file_stat.st_atime), (long long) file_stat.st_size, input_trozos[i]);
+        } else if (strcmp(input_trozos[1], "-link") == 0) {
+            printf("%ld (%ld) %-8lld %-4s\n", file_stat.st_nlink, file_stat.st_ino, (long long) file_stat.st_size, input_trozos[i]);
+        } else {
+            printf("\t%lld\t%s\n", (long long) file_stat.st_size, input_trozos[i]);
+        }
+    }
+
+    if (empty) {
+        char ruta[1024];
+
+        if (getcwd(ruta, sizeof(ruta)) != NULL)
+            printf("%s\n", ruta);
+        else
+            perror("Error al obtener la ruta\n");
+    }
+}
+
+void listDirectoryB(const char *dirPath) {//FUNCION AUXILIAR
+    DIR *dir = opendir(dirPath);
+    if (!dir) {
+        perror("Error al abrir el directorio\n");
+        return;
+    }
+
+    struct dirent *entry;
+    struct stat file_stat;
+
+    while ((entry = readdir(dir)) != NULL) {
+        char path[4096]; // Para contener la ruta completa de los elementos
+        snprintf(path, sizeof(path), "%s/%s", dirPath, entry->d_name);
+
+        if (stat(path, &file_stat) == -1) {
+            perror("Error al obtener información del archivo/directorio");
+            continue; // Continuar con el siguiente elemento si hay un error
+        }
+        if (entry->d_name[0] == '.')
+            continue;
+
+        if (S_ISDIR(file_stat.st_mode)) {
+            // Si es un directorio, imprímelo o procesa según lo necesites
+            listDirectoryB(path);
+        }
+    }
+    printf("************%s\n", dirPath);
+    rewinddir(dir); // Volver al principio del directorio para procesar archivos
+
+
+    while ((entry = readdir(dir)) != NULL) {
+        char path[4096];
+        snprintf(path, sizeof(path), "%s/%s", dirPath, entry->d_name);
+
+        if (stat(path, &file_stat) == -1) {
+            perror("Error al obtener información del archivo/directorio");
+            continue;
+        }
+        if (entry->d_name[0] == '.')
+            continue;
+
+        printf("%ld\t%s\n", file_stat.st_size, entry->d_name);
+
+    }
+
+    closedir(dir);
+}
+
+void listDirectoryA(const char *dirPath) {//FUNCION AUXILIAR
+    DIR *dir = opendir(dirPath);
+    if (!dir) {
+        perror("Error al abrir el directorio\n");
+        return;
+    }
+
+    struct dirent *entry;
+    struct stat file_stat;
+    printf("************%s\n", dirPath);
+    while ((entry = readdir(dir)) != NULL) {
+        char path[4096];
+        snprintf(path, sizeof(path), "%s/%s", dirPath, entry->d_name);
+
+        if (stat(path, &file_stat) == -1) {
+            perror("Error al obtener información del archivo/directorio");
+            continue;
+        }
+        if (entry->d_name[0] == '.')
+            continue;
+
+        printf("%ld\t%s\n", file_stat.st_size, entry->d_name);
+    }
+
+    rewinddir(dir); // Volver al principio del directorio para procesar directorios
+
+    while ((entry = readdir(dir)) != NULL) {
+        char path[4096]; // Para contener la ruta completa de los elementos
+        snprintf(path, sizeof(path), "%s/%s", dirPath, entry->d_name);
+
+        if (stat(path, &file_stat) == -1) {
+            perror("Error al obtener información del archivo/directorio");
+            continue; // Continuar con el siguiente elemento si hay un error
+        }
+        if (entry->d_name[0] == '.')
+            continue;
+
+        if (S_ISDIR(file_stat.st_mode)) {
+            // Si es un directorio, imprímelo o procesa según lo necesites
+            listDirectoryA(path);
+        }
+    }
+    closedir(dir);
+}
+
+void List(char *input_trozos[]) {
+    struct stat file_stat;
+    DIR *dir;
+    int i;
+    struct dirent *content;
+    char rutaAbsoluta[4096];
+    bool empty = true;
+    const char *options[] = {"-long", "-link", "-acc", "-reca", "-recb", "-hid"};
+    int numOptions = sizeof(options) / sizeof(options[0]);
+
+    for (i = 1; input_trozos[i] != NULL; i++) {
+        if(IsOption(input_trozos[i], options, numOptions))
+            continue;
+
+        dir = opendir(input_trozos[i]);
+        if (!dir) {
+            printf(" ****error al acceder a %s :No such file or directory\n", input_trozos[i]);
+            empty = false;
+            continue;
+        }
+        empty = false;
+        if (strcmp(input_trozos[1], "-long") == 0) {
+            struct passwd *pwd;
+            printf("***********%s\n", input_trozos[i]);
+            while ((content = readdir(dir)) != NULL) {
+                snprintf(rutaAbsoluta, sizeof(rutaAbsoluta), "%s/%s", input_trozos[i], content->d_name);
+                if (stat(rutaAbsoluta, &file_stat) == -1) {
+                    perror(""); //PONER COMO EN EL SHELL DE REFERENCIA
+                    return;
+                }
+                if (content->d_name[0] != '.') {
+                    pwd = getpwuid(file_stat.st_uid);
+                    /* printf("%s\t%ld\t(%ld)\t%s\t%s\t%lld\t%s\n", ctime(&file_stat.st_atime), file_stat.st_nlink,
+                            file_stat.st_ino, pwd->pw_name, ConvierteModo2(file_stat.st_mode), (long long) file_stat.st_size,
+                            content->d_name);
+                            */
+                }
+            }
+            closedir(dir);
+        } else if (strcmp(input_trozos[1], "-acc") == 0) {
+            printf("***********%s\n", input_trozos[i]);
+            while ((content = readdir(dir)) != NULL) {
+                snprintf(rutaAbsoluta, sizeof(rutaAbsoluta), "%s/%s", input_trozos[i], content->d_name);
+                if (stat(rutaAbsoluta, &file_stat) == -1) {
+                    perror("Error al obtener información del archivo/directorio\n"); //PONER COMO EN EL SHELL DE REFERENCIA
+                    return;
+                }
+                if (content->d_name[0] != '.') {
+                    printf("%s\t%lld\t%s\n", ctime(&file_stat.st_atime), (long long) file_stat.st_size,
+                           content->d_name);
+                }
+            }
+            closedir(dir);
+        } else if (strcmp(input_trozos[1], "-link") == 0) {
+            printf("***********%s\n", input_trozos[i]);
+            while ((content = readdir(dir)) != NULL) {
+                snprintf(rutaAbsoluta, sizeof(rutaAbsoluta), "%s/%s", input_trozos[i], content->d_name);
+                if (stat(rutaAbsoluta, &file_stat) == -1) {
+                    perror("Error al obtener información del archivo/directorio\n"); //PONER COMO EN EL SHELL DE REFERENCIA
+                    return;
+                }
+                if (content->d_name[0] != '.') {
+                    printf("%ld (%ld)\t%lld\t%s\n", file_stat.st_nlink, file_stat.st_ino, (long long) file_stat.st_size,
+                           content->d_name);
+                }
+            }
+            closedir(dir);
+        } else if (strcmp(input_trozos[1], "-recb") == 0) {
+            listDirectoryB(input_trozos[i]);
+        } else if (strcmp(input_trozos[1], "-reca") == 0) {
+            listDirectoryA(input_trozos[i]);
+        } else if (strcmp(input_trozos[1], "-hid") == 0) {
+            printf("***********%s\n", input_trozos[i]);
+            while ((content = readdir(dir)) != NULL) {
+                snprintf(rutaAbsoluta, sizeof(rutaAbsoluta), "%s/%s", input_trozos[i], content->d_name);
+                if (stat(rutaAbsoluta, &file_stat) == -1) {
+                    perror("Error al obtener información del archivo/directorio"); //PONER COMO EN EL SHELL DE REFERENCIA
+                    return;
+                }
+                printf("\t%lld\t%s\n", (long long) file_stat.st_size, content->d_name);
+            }
+            closedir(dir);
+        } else {
+            printf("***********%s\n", input_trozos[i]);
+            while ((content = readdir(dir)) != NULL) {
+                snprintf(rutaAbsoluta, sizeof(rutaAbsoluta), "%s/%s", input_trozos[i], content->d_name);
+                if (stat(rutaAbsoluta, &file_stat) == -1) {
+                    perror("Error al obtener información del archivo/directorio"); //PONER COMO EN EL SHELL DE REFERENCIA
+                    return;
+                }
+                if (content->d_name[0] != '.') {
+                    printf("\t%lld\t%s\n", (long long) file_stat.st_size, content->d_name);
+                }
+            }
+            closedir(dir);
+        }
+    }
+    if (empty) {
+        char ruta[1024];
+
+        if (getcwd(ruta, sizeof(ruta)) != NULL)
+            printf("%s\n", ruta);
+        else
+            perror("Error al obtener la ruta\n");
+        return;
+    }
+}
+
+
 void quit(bool *terminado){
     *terminado = true;
 }
