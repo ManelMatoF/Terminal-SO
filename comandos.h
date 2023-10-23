@@ -23,6 +23,7 @@ void help(char *commands[], char *input_trozos[], int n, int nComands);
 void quit(bool *terminado);
 void exit_func(bool *terminado);
 void bye(bool *terminado);
-
+void List(char *input_trozos[]);
+void Stat(char *input_trozos[]);
 
 #endif //P0_COMANDOS_H
