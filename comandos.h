@@ -5,25 +5,29 @@
 #include <stdbool.h>
 #include "lista.h"
 
-#define MAXNAME 150
+#define MAXNAME 300
+#define MAX_TROZOS 10
 
-void ListOpenFiles(tList L);
-void Cmd_open (char * tr[], tList *L);
-void Cmd_close (char *tr[], tList *L);
-void Cmd_dup (char * tr[], tList *L);
-void authors(char *input_trozos[], int n);
-void date();
-void tiempo();
-void infosys();
-void pid(char *input_trozos[], int n);
-void chdir_func(char *input_trozos[], int n);
-bool repeat_command(char *input_trozos[], int n, tList H, char *cadena, int *bucle);
-void hist(char *input_trozos[], int n, tList *H);
-void help(char *commands[], char *input_trozos[], int n, int nComands);
-void quit(bool *terminado);
-void exit_func(bool *terminado);
-void bye(bool *terminado);
-void List(char *input_trozos[]);
-void Stat(char *input_trozos[]);
+extern tList H, C, F;
 
+void aux_procesarEntrada(char *input, bool *terminado);
+void ListOpenFiles(char *input, char *input_trozos[], int n, bool *terminado);
+void Cmd_open (char *input, char *input_trozos[], int n, bool *terminado);
+void Cmd_close (char *input, char *input_trozos[], int n, bool *terminado);
+void Cmd_dup (char *input, char *input_trozos[], int n, bool *terminado);
+void authors(char *input, char *input_trozos[], int n, bool *terminado);
+void date(char *input, char *input_trozos[], int n, bool *terminado);
+void tiempo(char *input, char *input_trozos[], int n, bool *terminado);
+void infosys(char *input, char *input_trozos[], int n, bool *terminado);
+void pid(char *input, char *input_trozos[], int n, bool *terminado);
+void chdir_func(char *input, char *input_trozos[], int n, bool *terminado);
+void repeat_command(char *input, char *input_trozos[], int n, bool *terminado);
+void hist(char *input, char *input_trozos[], int n, bool *terminado);
+void help(char *input, char *input_trozos[], int n, bool *terminado);
+void quit(char *input, char *input_trozos[], int n, bool *terminado);
+void exit_func(char *input, char *input_trozos[], int n, bool *terminado);
+void bye(char *input, char *input_trozos[], int n, bool *terminado);
+void create(char *input, char *input_trozos[], int n, bool *terminado);
+void delete(char *input, char *input_trozos[], int n, bool *terminado);
+void deltree(char *input, char *input_trozos[], int n, bool *terminado);
 #endif //P0_COMANDOS_H
