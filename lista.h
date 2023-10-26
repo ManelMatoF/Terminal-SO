@@ -1,6 +1,6 @@
 #ifndef P0_LISTA_H
 #define P0_LISTA_H
-#define MAXNAME 150
+#define MAXNAME 300
 #include <stdio.h>
 #include <stdbool.h>
 
@@ -36,5 +36,11 @@ typedef struct{
     int df;
     char name[MAXNAME];
 }FileInfo;
+
+typedef struct{
+    char comand[MAXNAME];
+    char help_comand[MAXNAME];
+    void (*funcion)(char *input, char *input_trozos[MAXNAME], int n, bool *terminate);
+}Comands;
 
 #endif
