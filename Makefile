@@ -1,12 +1,11 @@
-# Nombre del programa final
-TARGET = mi_shell
+TARGET = P1
 
 # Compilador y opciones de compilación
 CC = gcc
-CFLAGS = -Wall -Wextra -pedantic -std=c99
+CFLAGS = -Wall -g	
 
 # Lista de archivos fuente y objetos
-SRCS = main.c lista.c comandos.c
+SRCS = P1.c lista.c comandos.c
 OBJS = $(SRCS:.c=.o)
 
 # Reglas de compilación
