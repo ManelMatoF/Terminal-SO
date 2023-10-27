@@ -8,17 +8,19 @@ void createEmptyList(tList *L) {
     *L = NULL;
 }
 
-
-
 tPosL first(tList L){
     return L;
 }
 
 tPosL last(tList L) {
-    tPosL x = L;
-    while (x->next != NULL) {
-        x = x->next;
+    if (L == NULL) {
+        return NULL;
     }
+    
+    tPosL x = L;
+    while (x->next != NULL)
+        x = x->next;
+
     return x;
 }
 
@@ -41,27 +43,12 @@ void *getItem(tPosL p) {
     return p->data;
 }
 
-bool createNode (tPosL *p){
+static bool createNode (tPosL *p){
     *p=malloc(sizeof(**p));
     return(*p!=NULL);
 }
 
 
-/*bool insertItem(void  *data, tList *L){
-    tPosL aux,x;
-    if(createNode(&aux)){
-        aux->data= data;
-        if (*L==NULL){
-            *L = aux;
-        } else{
-            x = last(*L);
-            x->next = aux;
-            aux->next = NULL;
-        }
-        return true;
-    }
-    return false;
-}*/
 bool insertItem(void *data, size_t dataSize, tList *L) {
     tPosL aux, x;
     
@@ -78,13 +65,9 @@ bool insertItem(void *data, size_t dataSize, tList *L) {
                 x->next = aux;
                 aux->next = NULL;
             }
-
             return true;
         }
-        
-        free(aux);
     }
-    
     return false;
 }
 
@@ -103,6 +86,7 @@ bool deleteItem(tPosL p, tList *L){
         }else{
             previous(x, *L)->next = x->next;
         }
+        free(x->data);
         free(x);
         return true;
     }    
