@@ -154,7 +154,7 @@ void insert_Comands(){
                     "\t-long: listado largo\n"
                     "\t-acc: acesstime\n"
                     "\t-link: si es enlace simbolico, el path contenido\n");
-                /*c->funcion=stat;*/
+                c->funcion=Stat;
                 insertItem(c, ComandSize, &C);
                 break;
             case 18:
@@ -164,7 +164,7 @@ void insert_Comands(){
                     "\t-recb: recursivo (antes)"
                     "\t-reca: recursivo (despues)"
                     "\tresto parametros como stat\n");
-                /*c->funcion=list;*/
+                c->funcion=list;
                 insertItem(c, ComandSize, &C);
             break;
             case 19:
@@ -186,7 +186,7 @@ void insert_Comands(){
     free(c);
 }
 
-void prelist_files(int df, int modo, char name[MAX_CH], FileInfo *f, size_t fileSize){
+void prelist_files(int df, int modo, char name[], FileInfo *f, size_t fileSize){
     f->df=df;
     strcpy(f->name, name);
     f->modo=modo;
@@ -195,7 +195,7 @@ void prelist_files(int df, int modo, char name[MAX_CH], FileInfo *f, size_t file
 }
 
 int main(){
-    char input[MAX_CH], name[MAX_CH];
+    char input[MAX_CH];
     bool terminado = false;
 
     createEmptyList(&H);
@@ -204,9 +204,10 @@ int main(){
 
     FileInfo *f0 = malloc(sizeof(FileInfo));
     size_t fileSize = sizeof(FileInfo);
-    prelist_files(0, 02, strcpy(name, "entrada estandar"),  f0, fileSize);
-    prelist_files(1, 02, strcpy(name, "salida estandar"), f0, fileSize);
-    prelist_files(2, 02, strcpy(name, "error estandar"), f0, fileSize);
+
+    prelist_files(0, 02,"entrada estandar",  f0, fileSize);
+    prelist_files(1, 02, "salida estandar", f0, fileSize);
+    prelist_files(2, 02, "error estandar", f0, fileSize);
 
     insert_Comands(&C);
 
