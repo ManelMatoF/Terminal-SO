@@ -28,6 +28,10 @@ void quit(char *input, char *input_trozos[], int n, bool *terminado);
 void exit_func(char *input, char *input_trozos[], int n, bool *terminado);
 void bye(char *input, char *input_trozos[], int n, bool *terminado);
 void create(char *input, char *input_trozos[], int n, bool *terminado);
+void Stat(char *input, char *input_trozos[], int n, bool *terminado);
+void list(char *input, char *input_trozos[], int n, bool *terminado);
 void delete(char *input, char *input_trozos[], int n, bool *terminado);
 void deltree(char *input, char *input_trozos[], int n, bool *terminado);
+
+
 #endif //P0_COMANDOS_H
