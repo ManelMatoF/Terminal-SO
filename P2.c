@@ -9,7 +9,7 @@
 
 #define MAX_CH 200
 #define MAX_TROZOS 10
-#define MAX_COMANDS 21
+#define MAX_COMANDS 30
 
 void imprimirPromt(){
     printf("-> ");
@@ -159,10 +159,10 @@ void insert_Comands(){
                 break;
             case 18:
                 strcpy(c->comand, "list");
-                strcpy(c->help_comand, "list [-reca] [-recb] [-hid][-long][-link][-acc] n1 n2 .. \tlista contenidos de directorios"
-                    "\t-hid: incluye los ficheros ocultos"
-                    "\t-recb: recursivo (antes)"
-                    "\t-reca: recursivo (despues)"
+                strcpy(c->help_comand, "list [-reca] [-recb] [-hid][-long][-link][-acc] n1 n2 .. \tlista contenidos de directorios\n"
+                    "\t-hid: incluye los ficheros ocultos\n"
+                    "\t-recb: recursivo (antes)\n"
+                    "\t-reca: recursivo (despues)\n"
                     "\tresto parametros como stat\n");
                 c->funcion=list;
                 insertItem(c, ComandSize, &C);
@@ -177,6 +177,70 @@ void insert_Comands(){
                 strcpy(c->comand, "deltree");
                 strcpy(c->help_comand, "deltree [name1 name2 ..] \tBorra ficheros o directorios no vacios recursivamente\n");
                 c->funcion=deltree;
+                insertItem(c, ComandSize, &C);
+                break;
+            case 21:
+                strcpy(c->comand, "malloc");
+                strcpy(c->help_comand, "malloc [-free] [tam]a \tsigna un bloque memoria de tamano tam con malloc\n"
+	                "\t-free: desasigna un bloque de memoria de tamano tam asignado con malloc\n");
+                c->funcion=malloc_funct;
+                insertItem(c, ComandSize, &C);
+                break;
+            case 22:
+                strcpy(c->comand, "shared");
+                strcpy(c->help_comand, "shared [-free|-create|-delkey] cl [tam]	\tasigna memoria compartida con clave cl en el programa\n"
+	                "\t-create cl tam: asigna (creando) el bloque de memoria compartida de clave cl y tamano tam\n"
+	                "\t-free cl: desmapea el bloque de memoria compartida de clave cl\n"
+	                "\t-delkey cl: elimina del sistema (sin desmapear) la clave de memoria cl\n");
+                c->funcion=shared_funct;
+                insertItem(c, ComandSize, &C);
+                break;
+            case 23:
+                strcpy(c->comand, "mmap");
+                strcpy(c->help_comand, "mmap [-free] fich prm \tmapea el fichero fich con permisos prm\n"
+	                "\t-free fich: desmapea el ficherofich\n");
+                /*c->funcion=*/
+                insertItem(c, ComandSize, &C);
+                break;
+            case 24:
+                strcpy(c->comand, "read");
+                strcpy(c->help_comand, "read fiche addr cont \tLee cont bytes desde fich a la direccion addr\n");
+                /*c->funcion=*/
+                insertItem(c, ComandSize, &C);
+                break;
+            case 25:
+                strcpy(c->comand, "write");
+                strcpy(c->help_comand, "write [-o] fiche addr cont \tEscribe cont bytes desde la direccion addr a fich (-o sobreescribe)\n");
+                /*c->funcion=*/
+                insertItem(c, ComandSize, &C);
+                break;
+            case 26:
+                strcpy(c->comand, "memdump");
+                strcpy(c->help_comand, "memdump addr cont \tVuelca en pantallas los contenidos (cont bytes) de la posicion de memoria addr\n");
+                /*c->funcion=*/
+                insertItem(c, ComandSize, &C);
+                break;
+            case 27:
+                strcpy(c->comand, "memfill");
+                strcpy(c->help_comand, "memfill addr cont byte \tLlena la memoria a partir de addr con byte\n");
+                /*c->funcion=*/
+                insertItem(c, ComandSize, &C);
+                break;
+            case 28:
+                strcpy(c->comand, "mem");
+                strcpy(c->help_comand, "mem [-blocks|-funcs|-vars|-all|-pmap] .. \tMuestra muestra detalles de la memoria del proceso"
+		            "\t-blocks: los bloques de memoria asignados\n"
+		            "\t-funcs: las direcciones de las funciones\n"
+		            "\t-vars: las direcciones de las variables\n"
+		            "\t-all: todo\n"
+		            "\t-pmap: muestra la salida del comando pmap(o similar)\n");
+                /*c->funcion=*/
+                insertItem(c, ComandSize, &C);
+                break;
+            case 29:
+                strcpy(c->comand, "recurse");
+                strcpy(c->help_comand, "recurse [n]\tInvoca a la funcion recursiva n veces\n");
+                /*c->funcion=*/
                 insertItem(c, ComandSize, &C);
                 break;
             default :
@@ -201,6 +265,7 @@ int main(){
     createEmptyList(&H);
     createEmptyList(&F);
     createEmptyList(&C);
+    createEmptyList(&M);
 
     FileInfo *f0 = malloc(sizeof(FileInfo));
     size_t fileSize = sizeof(FileInfo);
@@ -209,7 +274,7 @@ int main(){
     prelist_files(1, 02, "salida estandar", f0, fileSize);
     prelist_files(2, 02, "error estandar", f0, fileSize);
 
-    insert_Comands(&C);
+    insert_Comands();
 
     while(!terminado){
         imprimirPromt();
@@ -220,6 +285,7 @@ int main(){
     deleteList(&H);
     deleteList(&F);
     deleteList(&C);
+    deleteList(&M);
     free(f0);
 
     return 0;
