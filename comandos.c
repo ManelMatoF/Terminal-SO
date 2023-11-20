@@ -13,10 +13,12 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <pwd.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 
 #include "comandos.h"
 
-tList H, C, F;
+tList H, C, F, M;
 
 int TrocearCadena(char *cadena, char **input_trozos){
     int i=1;
@@ -73,7 +75,6 @@ tPosL findFiles(int df){
         return p;
     }
     return NULL;
-    
 }
 
 void ListOpenFiles(char *input, char *input_trozos[], int n, bool *terminado){
@@ -927,3 +928,253 @@ void deltree(char *input, char *input_trozos[], int n, bool *terminado){
             
     }
 }
+
+tPosL findMemTam(size_t size, AllocationType type){
+    if(M != NULL){
+        tPosL p = first(M);
+        MemInfo *m;
+        m = (MemInfo*)(getItem(p));
+        while(p!=NULL && (m->size != size || m->allocationType != type)){
+            p = next(p);
+            if(p!=NULL)
+                m = (MemInfo*)(getItem(p));
+        }
+        return p;
+    }
+    return NULL;
+}
+
+void printMemList(AllocationType type){
+    pid_t pid_aux = getpid();
+    printf("******Lista de bloques asignados%spara el proceso %d\n", type==MALLOC_MEMORY ? " malloc " : type==SHARED_MEMORY ? " shared " : type == MAPPED_FILE ? " mmap " : " ", pid_aux);
+    if(M != NULL){
+        tPosL p;
+        MemInfo *m = malloc(sizeof(MemInfo));
+        for(p = first(M); p != NULL; p=next(p)){
+            m = (MemInfo*)getItem(p);
+            if(m->allocationType == type){  
+                char typename[10];
+                char buffer_time[20];
+                struct tm *tm_date;
+
+                tm_date = localtime(&m->t);
+                strftime(buffer_time, sizeof(buffer_time), "%b %d %H:%M", tm_date);
+
+                if(m->allocationType==MALLOC_MEMORY)
+                    strcpy(typename, "malloc");
+                else if(m->allocationType==SHARED_MEMORY)
+                    strcpy(typename, "shared");
+                else
+                    strcpy(typename, "mapped");
+
+                printf("\t%p\t\t%lu %s %s ", m->address, (unsigned long) m->size, buffer_time, typename);
+                if(m->allocationType==SHARED_MEMORY)
+                    printf("(key %lu)", (unsigned long) m->OtherInfo.key);
+                if(m->allocationType==MAPPED_FILE)
+                    printf("");
+                printf("\n");
+            }
+        }
+    }
+}
+
+void malloc_funct(char *input, char *input_trozos[], int n, bool *terminado){
+    if(n == 1){
+        printMemList(MALLOC_MEMORY);
+    }
+    else {
+        size_t size = atoi(input_trozos[1]);
+        if(size > 0){
+            MemInfo *block = malloc(sizeof(MemInfo));
+            size_t MemInfosize = sizeof(MemInfo);
+            void *address = malloc(size);
+
+            block->address = address;
+            block->size = size; 
+            block->t = time(NULL);
+            block->allocationType = MALLOC_MEMORY;
+            
+            insertItem(block, MemInfosize, &M);
+            printf("Asignados %lu bytes en %p\n", (unsigned long) size, block->address);
+
+            free(block);
+        }
+        else if(strcmp("-free", input_trozos[1])==0){
+            if(n == 2)
+                printMemList(MALLOC_MEMORY);
+            else {
+                size_t size = atoi(input_trozos[2]);
+                if(size > 0){
+                    tPosL m = findMemTam(size, MALLOC_MEMORY);
+                    if(m != NULL){
+                        MemInfo *block = malloc(sizeof(MemInfo));
+                        block = (MemInfo*)getItem(m);
+                        free(block->address);
+                        deleteItem(m, &M);
+                    }
+                    else
+                        printf("No hay bloque de ese tamano asignado con malloc\n");
+                }
+                else
+                    printf("No se asignan bloques de 0 bytes\n");
+            }
+        }
+        else
+            printf("No se asignan bloques de 0 bytes\n");
+    }
+}
+
+void * ObtenerMemoriaShmget (key_t clave, size_t tam){
+    void *p;
+    int aux,id,flags=0777;
+    struct shmid_ds s;
+    MemInfo *block = malloc(sizeof(MemInfo));
+    size_t MemInfosize = sizeof(MemInfo);
+
+    if (tam)     /*tam distito de 0 indica crear */
+        flags=flags | IPC_CREAT | IPC_EXCL;
+    if (clave==IPC_PRIVATE)  /*no nos vale*/
+        {errno=EINVAL; return NULL;}
+    if ((id=shmget(clave, tam, flags))==-1)
+        return (NULL);
+    if ((p=shmat(id,NULL,0))==(void*) -1){
+        aux=errno;
+        if (tam)
+             shmctl(id,IPC_RMID,NULL);
+        errno=aux;
+        return (NULL);
+    }
+    shmctl (id,IPC_STAT,&s);
+    block->address=p;
+    block->allocationType=SHARED_MEMORY;
+    block->size=s.shm_segsz;
+    block->t=time(NULL);
+    block->OtherInfo.key=clave;
+
+    insertItem(block, MemInfosize, &M);
+    free(block);
+
+    return (p);
+
+}
+void do_AllocateCreateshared (char *tr[]){
+   key_t cl;
+   size_t tam;
+   void *p;
+
+   if (tr[0]==NULL || tr[1]==NULL) {
+		printMemList(SHARED_MEMORY);
+		return;
+   }
+  
+   cl=(key_t)  strtoul(tr[0],NULL,10);
+   tam=(size_t) strtoul(tr[1],NULL,10);
+   if (tam==0) {
+	printf ("No se asignan bloques de 0 bytes\n");
+	return;
+   }
+   if ((p=ObtenerMemoriaShmget(cl,tam))!=NULL)
+		printf ("Asignados %lu bytes en %p\n",(unsigned long) tam, p);
+   else
+		printf ("Imposible asignar memoria compartida clave %lu:%s\n",(unsigned long) cl,strerror(errno));
+}
+
+void do_DeallocateDelkey (char *args[]){//donde se buscan las keys? (lista o general)
+   key_t clave;
+   int id;
+   char *key=args[0];
+
+   if (key==NULL || (clave=(key_t) strtoul(key,NULL,10))==IPC_PRIVATE){
+        printf ("      delkey necesita clave_valida\n");
+        return;
+   }                
+   if ((id=shmget(clave,0,0666))==-1){
+        perror ("shmget: imposible obtener memoria compartida");
+        return;
+   }
+   if (shmctl(id,IPC_RMID,NULL)==-1)
+        perror ("shmctl: imposible eliminar memoria compartida\n");
+}
+
+bool findMemKey(key_t cl, AllocationType type){
+    if(M != NULL){
+        tPosL p = first(M);
+        MemInfo *m;
+        m = (MemInfo*)(getItem(p));
+        while(p!=NULL && (m->OtherInfo.key!= cl || m->allocationType != type)){
+            p = next(p);
+            if(p!=NULL)
+                m = (MemInfo*)(getItem(p));
+        }
+        if(p!=NULL)
+            return true;
+    }
+    return false;
+}
+
+void do_FreeDelKey(char *tr[]) {//donde se buscan las keys? (lista o general)
+    key_t cl;
+    void *p;
+    char *key = tr[0];
+
+    if (tr[0] == NULL) {
+        printMemList(SHARED_MEMORY);
+        return;
+    }
+    
+    cl = (key_t)strtoul(key, NULL, 10);
+
+    // Manejar claves privadas??
+    if (cl == IPC_PRIVATE) {
+        printf(" free necesita clave valida\n");
+        return;
+    }
+    p = shmat(shmget(cl, 0, 0666), NULL, 0);
+    if (p == (void *)-1) {
+        printf("No hay bloque de esa clave mapeado en el proceso\n");
+        return;
+    }
+
+    if (!findMemKey(cl, SHARED_MEMORY)) {
+        printf("No hay bloque de esa clave mapeado en el proceso\n");
+        return;
+    }
+
+    // Desmapear la memoria compartida
+    if (shmdt(p) == -1) {
+        perror("No se pudo desmapear la memoria compartida");
+        return;
+    }
+    else
+        deleteItem(first(M), &M);
+}
+
+
+void shared_funct(char *input, char *input_trozos[], int n, bool *terminado){//que hacer al salir del programa
+    if(n == 1){
+        printMemList(SHARED_MEMORY);
+    }
+    else{
+        if(strcmp(input_trozos[1], "-create") == 0){
+            do_AllocateCreateshared(input_trozos + 2);
+        }
+        else if(strcmp(input_trozos[1], "-free")== 0){
+            do_FreeDelKey(input_trozos + 2);
+        }
+        else if(strcmp(input_trozos[1], "-delkey") == 0){
+            do_DeallocateDelkey(input_trozos + 2);
+        }
+        else{
+            key_t cl = (key_t)  strtoul(input_trozos[1],NULL,10);
+            void *p;
+            if ((p=ObtenerMemoriaShmget(cl, 0))!=NULL)
+                printf ("Memoria compartida de clave %lu en %p\n",(unsigned long) cl, p);
+            else
+                printf ("Imposible asignar memoria compartida clave %lu:%s\n",(unsigned long) cl,strerror(errno));
+                    
+        }       
+    }
+}
+
+
+
