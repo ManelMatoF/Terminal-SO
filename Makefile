@@ -1,11 +1,11 @@
-TARGET = P1
+TARGET = P2
 
 # Compilador y opciones de compilación
 CC = gcc
 CFLAGS = -Wall -g	
 
 # Lista de archivos fuente y objetos
-SRCS = P1.c lista.c comandos.c
+SRCS = P2.c lista.c comandos.c
 OBJS = $(SRCS:.c=.o)
 
 # Reglas de compilación
