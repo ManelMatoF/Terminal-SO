@@ -1,10 +1,9 @@
 #ifndef P0_LISTA_H
 #define P0_LISTA_H
-#define MAXNAME 300
+#define MAXNAME 350
 #include <stdio.h>
 #include <stdbool.h>
-
-
+#include <time.h>
 typedef struct nodo *tPosL;
 struct nodo {
     void *data;             
@@ -42,5 +41,23 @@ typedef struct{
     char help_comand[MAXNAME];
     void (*funcion)(char *input, char *input_trozos[MAXNAME], int n, bool *terminate);
 }Comands;
+
+typedef enum {
+    MALLOC_MEMORY,
+    SHARED_MEMORY,
+    MAPPED_FILE
+} AllocationType;
+
+typedef struct {
+    void *address;
+    size_t size;
+    time_t t; 
+    AllocationType allocationType;
+    union {
+        int key;
+        char filename[MAXNAME];
+        int df;
+    } OtherInfo;
+}MemInfo;
 
 #endif
