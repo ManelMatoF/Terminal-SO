@@ -1176,5 +1176,228 @@ void shared_funct(char *input, char *input_trozos[], int n, bool *terminado){//q
     }
 }
 
+ssize_t LeerFichero(char *f, void *p, size_t cont) {
+    struct stat s;
+    ssize_t n;
+    int df, aux;
 
+    if (stat(f, &s) == -1 || (df = open(f, O_RDONLY)) == -1)
+        return -1;
+    if (cont == -1)   /* si pasamos -1 como bytes a leer lo leemos entero*/
+        cont = s.st_size;
+    if ((n = read(df, p, cont)) == -1) {
+        aux = errno;
+        close(df);
+        errno = aux;
+        return -1;
+    }
+    close(df);
+    return n;
+}
+
+void *cadtop(char *cadena) {
+    unsigned long long addr = strtoull(cadena, NULL, 16);
+    tPosL p = findMemAddr(addr);
+    if (p != NULL) {
+        MemInfo *m = (MemInfo *) getItem(p);
+        return m->address;
+    } else return "";
+}
+
+void CmdRead(char *input, char *input_trozos[], int n, bool *terminado) {
+    void *p;
+    size_t cont = -1;  /* -1 indica leer todo el fichero*/
+    ssize_t size;
+    if (input_trozos[1] == NULL || input_trozos[2] == NULL) {
+        printf("faltan parametros\n");
+        return;
+    }
+    p = cadtop(input_trozos[2]);  /*convertimos de cadena a puntero*/
+    if (input_trozos[3] != NULL)
+        cont = (size_t) atoll(input_trozos[3]);
+
+    if ((size = LeerFichero(input_trozos[1], p, cont)) == -1)
+        perror("Imposible leer fichero");
+    else
+        printf("leidos %lld bytes de %s en %p\n", (long long) size, input_trozos[1], p);
+}
+
+ssize_t EscribirFichero(char *f, void *p, size_t cont, int overwrite) {
+    ssize_t n;
+    int df, aux, flags = O_CREAT | O_EXCL | O_WRONLY;
+
+    if (overwrite)
+        flags = O_CREAT | O_WRONLY | O_TRUNC;
+
+    if ((df = open(f, flags, 0777)) == -1)
+        return -1;
+
+    if ((n = write(df, p, cont)) == -1) {
+        aux = errno;
+        close(df);
+        errno = aux;
+        return -1;
+    }
+    close(df);
+    return n;
+}
+
+void Write(char *input, char *input_trozos[], int n, bool *terminado) {
+    void *p;
+    size_t cont;
+    ssize_t size;
+    int overwrite = 0;
+
+    if (input_trozos[1] != NULL && strcmp(input_trozos[1], "-o") == 0)
+        overwrite = 1;
+
+    if (input_trozos[overwrite + 1] == NULL || input_trozos[overwrite + 2] == NULL ||
+        input_trozos[overwrite + 3] == NULL) {
+        printf("faltan parametros\n");
+        return;
+    }
+
+    p = cadtop(input_trozos[overwrite + 2]);  /*convertimos de cadena a puntero*/
+    cont = (size_t) atoll(input_trozos[overwrite + 3]);
+
+    if ((size = EscribirFichero(input_trozos[overwrite + 1], p, cont, overwrite) == -1))
+        perror("Imposible escribir fichero");
+    else
+        printf("Escritos %lld bytes en %s desde %p\n", (long long) cont, input_trozos[overwrite + 1], p);
+}
+
+void Memdump(char *input, char *input_trozos[], int n, bool *terminado) {
+    size_t cont, i, cont_aux;
+    tPosL p;
+    MemInfo *m;
+
+    if (input_trozos[1] == NULL) {
+        printf("faltan parametros\n");
+        return;
+    } else {
+        p = findMemAddr(strtoull(input_trozos[1], NULL, 16));
+        m = (MemInfo *) getItem(p);
+    }
+
+
+    if (input_trozos[2] != NULL) {
+        cont = (size_t) atoll(input_trozos[2]);
+        cont_aux = cont;
+    } else {
+        for (i = 0; i <= m->size; i++) {
+            if (*(unsigned char *) (m->address + i) == 0x00) {
+                break;
+            }
+        }
+        cont = i + 1;
+        cont_aux = i;
+    }
+
+    printf("Volcando %zu bytes desde la direccion %s\n", cont_aux, input_trozos[1]);
+    for (i = 0; i < cont; i++) {
+        if (*(unsigned char *) (m->address + i) == 0x0a) {
+            printf("\\n");
+        } else {
+            printf("%c  ", *((unsigned char *) (m->address + i)));
+        }
+    }
+    printf("\n");
+    for (i = 0; i < cont; i++) {
+        printf("%02x ", *((unsigned char *) (m->address + i)));
+    }
+
+    printf("\n");
+}
+
+void LlenarMemoria(void *p, size_t cont, unsigned char byte) {
+    unsigned char *arr = (unsigned char *) p;
+    size_t i;
+
+    for (i = 0; i < cont; i++)
+        arr[i] = byte;
+}
+
+void Memfill(char *input, char *input_trozos[], int n, bool *terminado) {
+    size_t cont;
+    MemInfo *m;
+    int byte = 65;
+    void *p;
+
+    if (input_trozos[1] == NULL) {
+        return;
+    } else {
+        p = findMemAddr(strtoull(input_trozos[1], NULL, 16));
+        m = (MemInfo *) getItem(p);
+    }
+    if (input_trozos[2] == NULL) {
+        cont = m->size;
+    } else cont = strtoul(input_trozos[2], NULL, 10);
+    if (input_trozos[3] != NULL) {
+        byte = (int) strtoul(input_trozos[3], NULL, 10);
+    }
+    printf("LLenando %zu bytes de memoria con el byte %c(%02x) a partir de la direccion %s\n", cont, (char) byte, byte,
+           input_trozos[1]);
+    LlenarMemoria(m->address, cont, (char) byte);
+}
+
+void Do_MemPmap(void) /*sin argumentos*/
+{
+    pid_t pid;       /*hace el pmap (o equivalente) del proceso actual*/
+    char elpid[32];
+    char *argv[4] = {"pmap", elpid, NULL};
+
+    sprintf(elpid, "%d", (int) getpid());
+    if ((pid = fork()) == -1) {
+        perror("Imposible crear proceso");
+        return;
+    }
+    if (pid == 0) { /*proceso hijo*/
+        if (execvp(argv[0], argv) == -1)
+            perror("cannot execute pmap (linux, solaris)");
+
+        argv[0] = "vmmap";
+        argv[1] = "-interleave";
+        argv[2] = elpid;
+        argv[3] = NULL;
+        if (execvp(argv[0], argv) == -1) /*probamos vmmap Mac-OS*/
+            perror("cannot execute vmmap (Mac-OS)");
+
+        argv[0] = "procstat";
+        argv[1] = "vm";
+        argv[2] = elpid;
+        argv[3] = NULL;
+        if (execvp(argv[0], argv) == -1)/*No hay pmap, probamos procstat FreeBSD */
+            perror("cannot execute procstat (FreeBSD)");
+
+        argv[0] = "procmap", argv[1] = elpid;
+        argv[2] = NULL;
+        if (execvp(argv[0], argv) == -1)  /*probamos procmap OpenBSD*/
+            perror("cannot execute procmap (OpenBSD)");
+
+        exit(1);
+    }
+    waitpid(pid, NULL, 0);
+}
+
+void Mem(char *input, char *input_trozos[], int n, bool *terminado) {
+
+    if (input_trozos[1] == NULL || strcmp(input_trozos[1], "-all") == 0) {
+        strcpy(input_trozos[1], "-vars");
+        Mem(input, input_trozos, n, terminado);
+        strcpy(input_trozos[1], "-funcs");
+        Mem(input, input_trozos, n, terminado);
+        strcpy(input_trozos[1], "-blocks");
+        Mem(input, input_trozos, n, terminado);
+    } else if (strcmp(input_trozos[1], "-blocks") == 0) {
+        printMemList(MALLOC_MEMORY);
+        printMemList(SHARED_MEMORY);
+        printMemList(MAPPED_FILE);
+    } else if (strcmp(input_trozos[1], "-funcs") == 0) {
+
+    } else if (strcmp(input_trozos[1], "-vars") == 0) {
+
+    } else if (strcmp(input_trozos[1], "-pmap") == 0) {
+        Do_MemPmap();
+    } else printf("Opcion %s no contenplada", input_trozos[1]);
+}
 
