@@ -69,8 +69,8 @@ void insert_Comands(){
             case 5:
                 strcpy(c->comand, "hist");
                 strcpy(c->help_comand, "hist [-c|-N]\tMuestra (o borra)el historico de comandos\n"
-                    "\t-N: muestra los N primeros\n"
-                    "\t-c: borra el historico\n");
+                                       "\t-N: muestra los N primeros\n"
+                                       "\t-c: borra el historico\n");
                 c->funcion=hist;
                 insertItem(c, ComandSize, &C);
                 break;
@@ -83,14 +83,14 @@ void insert_Comands(){
             case 7:
                 strcpy(c->comand, "open");
                 strcpy(c->help_comand, "open fich m1 m2...\tAbre el fichero fich. y lo anade a la lista de ficheros abiertos del shell\n"
-                    "\t m1, m2..es el modo de apertura (or bit a bit de los siguientes).\n"
-                    "\tcr: O_CREAT\tap: O_APPEND\n"
-                    "\tex: O_EXCL \tro: O_RDONLY\n"
-                    "\trw: O_RDWR \two: O_WRONLY\n"
-                    "\ttr: O_TRUNC\n");
+                                       "\t m1, m2..es el modo de apertura (or bit a bit de los siguientes).\n"
+                                       "\tcr: O_CREAT\tap: O_APPEND\n"
+                                       "\tex: O_EXCL \tro: O_RDONLY\n"
+                                       "\trw: O_RDWR \two: O_WRONLY\n"
+                                       "\ttr: O_TRUNC\n");
                 c->funcion=Cmd_open;
                 insertItem(c, ComandSize, &C);
-            break;
+                break;
             case 8:
                 strcpy(c->comand, "close");
                 strcpy(c->help_comand, "close df\tCierra el descriptor df y elimina el correspondiente fichero de la lista de ficheros abiertos\n");
@@ -118,9 +118,9 @@ void insert_Comands(){
             case 12:
                 strcpy(c->comand, "help");
                 strcpy(c->help_comand, "help [cmd|-lt|-T]\tMuestra ayuda sobre los comandos\n"
-                    "\t-lt: lista topics de ayuda\n"
-                    "\t-T topic: lista comandos sobre ese topic\n"
-                    "\tcmd: info sobre el comando cmd\n");
+                                       "\t-lt: lista topics de ayuda\n"
+                                       "\t-T topic: lista comandos sobre ese topic\n"
+                                       "\tcmd: info sobre el comando cmd\n");
                 c->funcion=help;
                 insertItem(c, ComandSize, &C);
                 break;
@@ -151,22 +151,22 @@ void insert_Comands(){
             case 17:
                 strcpy(c->comand, "stat");
                 strcpy(c->help_comand, "stat [-long][-link][-acc] name1 name2 .. \tlista ficheros;\n"
-                    "\t-long: listado largo\n"
-                    "\t-acc: acesstime\n"
-                    "\t-link: si es enlace simbolico, el path contenido\n");
+                                       "\t-long: listado largo\n"
+                                       "\t-acc: acesstime\n"
+                                       "\t-link: si es enlace simbolico, el path contenido\n");
                 c->funcion=Stat;
                 insertItem(c, ComandSize, &C);
                 break;
             case 18:
                 strcpy(c->comand, "list");
                 strcpy(c->help_comand, "list [-reca] [-recb] [-hid][-long][-link][-acc] n1 n2 .. \tlista contenidos de directorios\n"
-                    "\t-hid: incluye los ficheros ocultos\n"
-                    "\t-recb: recursivo (antes)\n"
-                    "\t-reca: recursivo (despues)\n"
-                    "\tresto parametros como stat\n");
+                                       "\t-hid: incluye los ficheros ocultos\n"
+                                       "\t-recb: recursivo (antes)\n"
+                                       "\t-reca: recursivo (despues)\n"
+                                       "\tresto parametros como stat\n");
                 c->funcion=list;
                 insertItem(c, ComandSize, &C);
-            break;
+                break;
             case 19:
                 strcpy(c->comand, "delete");
                 strcpy(c->help_comand, "delete [name1 name2 ..] \tBorra ficheros o directorios vacios\n");
@@ -182,59 +182,59 @@ void insert_Comands(){
             case 21:
                 strcpy(c->comand, "malloc");
                 strcpy(c->help_comand, "malloc [-free] [tam]a \tsigna un bloque memoria de tamano tam con malloc\n"
-	                "\t-free: desasigna un bloque de memoria de tamano tam asignado con malloc\n");
+                                       "\t-free: desasigna un bloque de memoria de tamano tam asignado con malloc\n");
                 c->funcion=malloc_funct;
                 insertItem(c, ComandSize, &C);
                 break;
             case 22:
                 strcpy(c->comand, "shared");
                 strcpy(c->help_comand, "shared [-free|-create|-delkey] cl [tam]	\tasigna memoria compartida con clave cl en el programa\n"
-	                "\t-create cl tam: asigna (creando) el bloque de memoria compartida de clave cl y tamano tam\n"
-	                "\t-free cl: desmapea el bloque de memoria compartida de clave cl\n"
-	                "\t-delkey cl: elimina del sistema (sin desmapear) la clave de memoria cl\n");
+                                       "\t-create cl tam: asigna (creando) el bloque de memoria compartida de clave cl y tamano tam\n"
+                                       "\t-free cl: desmapea el bloque de memoria compartida de clave cl\n"
+                                       "\t-delkey cl: elimina del sistema (sin desmapear) la clave de memoria cl\n");
                 c->funcion=shared_funct;
                 insertItem(c, ComandSize, &C);
                 break;
             case 23:
                 strcpy(c->comand, "mmap");
                 strcpy(c->help_comand, "mmap [-free] fich prm \tmapea el fichero fich con permisos prm\n"
-	                "\t-free fich: desmapea el ficherofich\n");
+                                       "\t-free fich: desmapea el ficherofich\n");
                 /*c->funcion=*/
                 insertItem(c, ComandSize, &C);
                 break;
             case 24:
                 strcpy(c->comand, "read");
                 strcpy(c->help_comand, "read fiche addr cont \tLee cont bytes desde fich a la direccion addr\n");
-                /*c->funcion=*/
+                c->funcion= CmdRead;
                 insertItem(c, ComandSize, &C);
                 break;
             case 25:
                 strcpy(c->comand, "write");
                 strcpy(c->help_comand, "write [-o] fiche addr cont \tEscribe cont bytes desde la direccion addr a fich (-o sobreescribe)\n");
-                /*c->funcion=*/
+                c->funcion= Write;
                 insertItem(c, ComandSize, &C);
                 break;
             case 26:
                 strcpy(c->comand, "memdump");
                 strcpy(c->help_comand, "memdump addr cont \tVuelca en pantallas los contenidos (cont bytes) de la posicion de memoria addr\n");
-                /*c->funcion=*/
+                c->funcion= Memdump;
                 insertItem(c, ComandSize, &C);
                 break;
             case 27:
                 strcpy(c->comand, "memfill");
                 strcpy(c->help_comand, "memfill addr cont byte \tLlena la memoria a partir de addr con byte\n");
-                /*c->funcion=*/
+                c->funcion= Memfill;
                 insertItem(c, ComandSize, &C);
                 break;
             case 28:
                 strcpy(c->comand, "mem");
                 strcpy(c->help_comand, "mem [-blocks|-funcs|-vars|-all|-pmap] .. \tMuestra muestra detalles de la memoria del proceso"
-		            "\t-blocks: los bloques de memoria asignados\n"
-		            "\t-funcs: las direcciones de las funciones\n"
-		            "\t-vars: las direcciones de las variables\n"
-		            "\t-all: todo\n"
-		            "\t-pmap: muestra la salida del comando pmap(o similar)\n");
-                /*c->funcion=*/
+                                       "\t-blocks: los bloques de memoria asignados\n"
+                                       "\t-funcs: las direcciones de las funciones\n"
+                                       "\t-vars: las direcciones de las variables\n"
+                                       "\t-all: todo\n"
+                                       "\t-pmap: muestra la salida del comando pmap(o similar)\n");
+                c->funcion= Mem;
                 insertItem(c, ComandSize, &C);
                 break;
             case 29:
@@ -281,7 +281,7 @@ int main(){
         leerEntrada(input);
         procesarEntrada(input, &terminado);
     }
-    
+
     deleteList(&H);
     deleteList(&F);
     deleteList(&C);
