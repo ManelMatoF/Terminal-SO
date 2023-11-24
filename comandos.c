@@ -1340,6 +1340,7 @@ void Memfill(char *input, char *input_trozos[], int n, bool *terminado) {
     LlenarMemoria(m->address, cont, (char) byte);
 }
 
+
 void Do_MemPmap(void) /*sin argumentos*/
 {
     pid_t pid;       /*hace el pmap (o equivalente) del proceso actual*/
@@ -1379,6 +1380,33 @@ void Do_MemPmap(void) /*sin argumentos*/
     waitpid(pid, NULL, 0);
 }
 
+void funcs() {
+    void *array[10];
+    size_t size;
+    char **strings;
+    size_t i;
+
+    size = backtrace(array, 10);
+    strings = backtrace_symbols(array, size);
+
+    if (strings == NULL) {
+        perror("backtrace_symbols");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Funciones programa:\t");
+
+    for (i = 0; i < 3; i++) {
+        void *addr = array[i];
+        Dl_info info;
+        dladdr(addr, &info);
+        printf("%p     ", addr);
+    }
+    printf("\n");
+    free(strings);
+}
+
+
 void Mem(char *input, char *input_trozos[], int n, bool *terminado) {
 
     if (input_trozos[1] == NULL || strcmp(input_trozos[1], "-all") == 0) {
@@ -1393,6 +1421,7 @@ void Mem(char *input, char *input_trozos[], int n, bool *terminado) {
         printMemList(SHARED_MEMORY);
         printMemList(MAPPED_FILE);
     } else if (strcmp(input_trozos[1], "-funcs") == 0) {
+        funcs();
 
     } else if (strcmp(input_trozos[1], "-vars") == 0) {
 
@@ -1400,4 +1429,3 @@ void Mem(char *input, char *input_trozos[], int n, bool *terminado) {
         Do_MemPmap();
     } else printf("Opcion %s no contenplada", input_trozos[1]);
 }
-
