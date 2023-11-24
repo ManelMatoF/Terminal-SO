@@ -1298,15 +1298,15 @@ void Memdump(char *input, char *input_trozos[], int n, bool *terminado) {
 
     if (input_trozos[2] != NULL) {
         cont = (size_t) atoll(input_trozos[2]);
-        cont_aux = cont;
-    } else {
-        for (i = 0; i <= m->size; i++) {
-            if (*(unsigned char *) (m->address + i) == 0x00) {
-                break;
-            }
+        if (cont <= m->size)
+            cont_aux = cont;
+        else {
+            cont = m->size;
+            cont_aux = cont;
         }
-        cont = i + 1;
-        cont_aux = i;
+    } else {
+        cont = 25;
+        cont_aux = cont;
     }
 
     printf("Volcando %zu bytes desde la direccion %s\n", cont_aux, input_trozos[1]);
@@ -1325,6 +1325,7 @@ void Memdump(char *input, char *input_trozos[], int n, bool *terminado) {
     printf("\n");
 }
 
+
 void LlenarMemoria(void *p, size_t cont, unsigned char byte) {
     unsigned char *arr = (unsigned char *) p;
     size_t i;
@@ -1337,7 +1338,7 @@ void Memfill(char *input, char *input_trozos[], int n, bool *terminado) {
     size_t cont;
     MemInfo *m;
     int byte = 65;
-    void *p;
+    tPosL p;
 
     if (input_trozos[1] == NULL) {
         return;
@@ -1347,7 +1348,14 @@ void Memfill(char *input, char *input_trozos[], int n, bool *terminado) {
     }
     if (input_trozos[2] == NULL) {
         cont = m->size;
-    } else cont = strtoul(input_trozos[2], NULL, 10);
+    } else {
+        cont = strtoul(input_trozos[2], NULL, 10);
+        if (cont > m->size) {
+            printf("No es posible asignar tantos bytes\n");
+            return;
+        }
+
+    }
     if (input_trozos[3] != NULL) {
         byte = (int) strtoul(input_trozos[3], NULL, 10);
     }
@@ -1355,7 +1363,6 @@ void Memfill(char *input, char *input_trozos[], int n, bool *terminado) {
            input_trozos[1]);
     LlenarMemoria(m->address, cont, (char) byte);
 }
-
 
 void Do_MemPmap(void) /*sin argumentos*/
 {
