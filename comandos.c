@@ -944,6 +944,22 @@ tPosL findMemTam(size_t size, AllocationType type){
     return NULL;
 }
 
+tPosL findMemAddr(unsigned long long addr) {
+    if (M != NULL) {
+        tPosL p = first(M);
+        MemInfo *m;
+        m = (MemInfo *) (getItem(p));
+        while (p != NULL && (m->address != (void *) addr)) {
+            p = next(p);
+            if (p != NULL)
+                m = (MemInfo *) (getItem(p));
+        }
+        return p;
+    }
+    return NULL;
+}
+
+
 void printMemList(AllocationType type){
     pid_t pid_aux = getpid();
     printf("******Lista de bloques asignados%spara el proceso %d\n", type==MALLOC_MEMORY ? " malloc " : type==SHARED_MEMORY ? " shared " : type == MAPPED_FILE ? " mmap " : " ", pid_aux);
