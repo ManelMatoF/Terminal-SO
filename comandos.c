@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,10 +17,25 @@
 #include <pwd.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <sys/mman.h>
+#include <dlfcn.h>
+#include <execinfo.h>
+#include <sys/wait.h>
+
+
 
 #include "comandos.h"
 
-tList H, C, F, M;
+tList H, C, F, M, P;
+int num_back_process = 0;
+
+int entero_global_i = 45;
+float flotante_global_i = 3.12;
+char caracter_global_i = 'M';
+
+int entero_global_sin;
+float flotante_global_sin;
+char caracter_global_sin;
 
 int TrocearCadena(char *cadena, char **input_trozos){
     int i=1;
@@ -52,7 +69,7 @@ void aux_procesarEntrada(char *input, bool *terminado){
     if(input_num > 0){
         tPosL cmd = encontrarComando(input_trozos);
         if(cmd == NULL){
-            printf("No ejecutado: No such file or directory\n");
+            execute_external_command(input_trozos, input_num);
         }
         else{
             Comands *c;
@@ -343,8 +360,10 @@ tPosL aux_help(char *input) {
         Comands *c;
         c = (Comands*)(getItem(p));
         while(p!=NULL && strcmp(c->comand, input)!=0){
-           p=next(p);
-           c = (Comands*)(getItem(p));   
+            p=next(p);
+            if(p!=NULL){
+                c = (Comands*)(getItem(p));  
+            } 
         }
         return p;
     }
@@ -944,25 +963,10 @@ tPosL findMemTam(size_t size, AllocationType type){
     return NULL;
 }
 
-tPosL findMemAddr(unsigned long long addr) {
-    if (M != NULL) {
-        tPosL p = first(M);
-        MemInfo *m;
-        m = (MemInfo *) (getItem(p));
-        while (p != NULL && (m->address != (void *) addr)) {
-            p = next(p);
-            if (p != NULL)
-                m = (MemInfo *) (getItem(p));
-        }
-        return p;
-    }
-    return NULL;
-}
-
-
-void printMemList(AllocationType type){
+void printMemList(AllocationType type, bool mem){
     pid_t pid_aux = getpid();
-    printf("******Lista de bloques asignados%spara el proceso %d\n", type==MALLOC_MEMORY ? " malloc " : type==SHARED_MEMORY ? " shared " : type == MAPPED_FILE ? " mmap " : " ", pid_aux);
+    if(!mem)
+        printf("******Lista de bloques asignados%spara el proceso %d\n", type==MALLOC_MEMORY ? " malloc " : type==SHARED_MEMORY ? " shared " : type == MAPPED_FILE ? " mmap " : " ", pid_aux);
     if(M != NULL){
         tPosL p;
         MemInfo *m = malloc(sizeof(MemInfo));
@@ -977,17 +981,17 @@ void printMemList(AllocationType type){
                 strftime(buffer_time, sizeof(buffer_time), "%b %d %H:%M", tm_date);
 
                 if(m->allocationType==MALLOC_MEMORY)
-                    strcpy(typename, "malloc");
+                    strcpy(typename, "malloc ");
                 else if(m->allocationType==SHARED_MEMORY)
-                    strcpy(typename, "shared");
+                    strcpy(typename, "shared ");
                 else
-                    strcpy(typename, "mapped");
+                    strcpy(typename, " ");
 
-                printf("\t%p\t\t%lu %s %s ", m->address, (unsigned long) m->size, buffer_time, typename);
+                printf("\t%p\t\t%lu %s %s", m->address, (unsigned long) m->size, buffer_time, typename);
                 if(m->allocationType==SHARED_MEMORY)
                     printf("(key %lu)", (unsigned long) m->OtherInfo.key);
                 if(m->allocationType==MAPPED_FILE)
-                    printf("");
+                    printf("%s  (descriptor %d)", m->OtherInfo.mapped.filename, m->OtherInfo.mapped.df);
                 printf("\n");
             }
         }
@@ -996,7 +1000,7 @@ void printMemList(AllocationType type){
 
 void malloc_funct(char *input, char *input_trozos[], int n, bool *terminado){
     if(n == 1){
-        printMemList(MALLOC_MEMORY);
+        printMemList(MALLOC_MEMORY, false);
     }
     else {
         size_t size = atoi(input_trozos[1]);
@@ -1017,13 +1021,13 @@ void malloc_funct(char *input, char *input_trozos[], int n, bool *terminado){
         }
         else if(strcmp("-free", input_trozos[1])==0){
             if(n == 2)
-                printMemList(MALLOC_MEMORY);
+                printMemList(MALLOC_MEMORY, false);
             else {
                 size_t size = atoi(input_trozos[2]);
                 if(size > 0){
                     tPosL m = findMemTam(size, MALLOC_MEMORY);
                     if(m != NULL){
-                        MemInfo *block = malloc(sizeof(MemInfo));
+                        MemInfo *block;
                         block = (MemInfo*)getItem(m);
                         free(block->address);
                         deleteItem(m, &M);
@@ -1079,7 +1083,7 @@ void do_AllocateCreateshared (char *tr[]){
    void *p;
 
    if (tr[0]==NULL || tr[1]==NULL) {
-		printMemList(SHARED_MEMORY);
+		printMemList(SHARED_MEMORY, false);
 		return;
    }
   
@@ -1112,46 +1116,42 @@ void do_DeallocateDelkey (char *args[]){//donde se buscan las keys? (lista o gen
         perror ("shmctl: imposible eliminar memoria compartida\n");
 }
 
-bool findMemKey(key_t cl, AllocationType type){
+void * findMemKey(key_t cl, AllocationType type){
     if(M != NULL){
         tPosL p = first(M);
         MemInfo *m;
         m = (MemInfo*)(getItem(p));
-        while(p!=NULL && (m->OtherInfo.key!= cl || m->allocationType != type)){
+        while(p!=NULL && (m->allocationType != type || m->OtherInfo.key!= cl)){
             p = next(p);
             if(p!=NULL)
                 m = (MemInfo*)(getItem(p));
         }
         if(p!=NULL)
-            return true;
+            return m->address;
     }
-    return false;
+    return NULL;
 }
 
-void do_FreeDelKey(char *tr[]) {//donde se buscan las keys? (lista o general)
+void do_FreeDelKey(char *tr[]) {
     key_t cl;
     void *p;
     char *key = tr[0];
 
     if (tr[0] == NULL) {
-        printMemList(SHARED_MEMORY);
+        printMemList(SHARED_MEMORY, false);
         return;
     }
     
     cl = (key_t)strtoul(key, NULL, 10);
 
-    // Manejar claves privadas??
+    
     if (cl == IPC_PRIVATE) {
         printf(" free necesita clave valida\n");
         return;
     }
-    p = shmat(shmget(cl, 0, 0666), NULL, 0);
-    if (p == (void *)-1) {
-        printf("No hay bloque de esa clave mapeado en el proceso\n");
-        return;
-    }
+    p = findMemKey(cl, SHARED_MEMORY);
 
-    if (!findMemKey(cl, SHARED_MEMORY)) {
+    if (p == NULL) {
         printf("No hay bloque de esa clave mapeado en el proceso\n");
         return;
     }
@@ -1166,9 +1166,9 @@ void do_FreeDelKey(char *tr[]) {//donde se buscan las keys? (lista o general)
 }
 
 
-void shared_funct(char *input, char *input_trozos[], int n, bool *terminado){//que hacer al salir del programa
+void shared_funct(char *input, char *input_trozos[], int n, bool *terminado){
     if(n == 1){
-        printMemList(SHARED_MEMORY);
+        printMemList(SHARED_MEMORY, false);
     }
     else{
         if(strcmp(input_trozos[1], "-create") == 0){
@@ -1192,6 +1192,101 @@ void shared_funct(char *input, char *input_trozos[], int n, bool *terminado){//q
     }
 }
 
+void * MapearFichero (char * fichero, int protection)
+{
+    int df, map=MAP_PRIVATE,modo=O_RDONLY;
+    struct stat s;
+    void *p;
+    MemInfo *block = malloc(sizeof(MemInfo));
+    size_t MemInfosize = sizeof(MemInfo);
+
+    if (protection&PROT_WRITE)
+          modo=O_RDWR;
+    if (stat(fichero,&s)==-1 || (df=open(fichero, modo))==-1)
+          return NULL;
+    if ((p=mmap (NULL,s.st_size, protection,map,df,0))==MAP_FAILED)
+           return NULL;
+
+    block->address = p;
+    block->allocationType = MAPPED_FILE;
+    block->size = s.st_size;
+    block->t = time(NULL);
+    block->OtherInfo.mapped.df = df;
+    strcpy(block->OtherInfo.mapped.filename, fichero);
+
+    insertItem(block, MemInfosize, &M);
+    free(block);
+    
+    return p;
+}
+
+void do_AllocateMmap(char *arg[])
+{ 
+    char *perm;
+    void *p;
+    int protection=0;
+     
+    if ((perm=arg[1])!=NULL && strlen(perm)<4) {
+            if (strchr(perm,'r')!=NULL) protection|=PROT_READ;
+            if (strchr(perm,'w')!=NULL) protection|=PROT_WRITE;
+            if (strchr(perm,'x')!=NULL) protection|=PROT_EXEC;
+    }
+    if ((p=MapearFichero(arg[0],protection))==NULL)
+             perror ("Imposible mapear fichero");
+    else
+             printf ("fichero %s mapeado en %p\n", arg[0], p);
+}
+
+void * findMemName(char *fichero, AllocationType type){
+    if(M != NULL){
+        tPosL p = first(M);
+        MemInfo *m;
+        m = (MemInfo*)(getItem(p));
+        while(p!=NULL && (m->allocationType != type || strcmp(m->OtherInfo.mapped.filename, fichero) != 0)){
+            p = next(p);
+            if(p!=NULL)
+                m = (MemInfo*)(getItem(p));
+        }
+    return p;
+    }
+    return NULL;
+}
+
+void do_freeMmap(char * fichero) {
+
+    MemInfo *block;
+    tPosL p;
+
+    p=findMemName(fichero, MAPPED_FILE);
+
+    if (p == NULL) {
+        perror("Imposible mapear fichero:");
+        return;
+    }
+
+    block = (MemInfo*)(getItem(p));
+
+    if (munmap(block->address, block->size) == -1) {
+        perror("Error unmapping memory");
+        return;
+    }
+    close(block->OtherInfo.mapped.df);
+    deleteItem(p, &M);
+}
+
+
+void mmap_funct(char *input, char *input_trozos[], int n, bool *terminado){
+    if(n == 1)
+        printMemList(MAPPED_FILE, false);
+    else{
+        if(strcmp(input_trozos[1], "-free")==0)
+            do_freeMmap(input_trozos[2]);
+        else
+            do_AllocateMmap(input_trozos + 1);
+    }
+        
+}
+
 ssize_t LeerFichero(char *f, void *p, size_t cont) {
     struct stat s;
     ssize_t n;
@@ -1211,13 +1306,29 @@ ssize_t LeerFichero(char *f, void *p, size_t cont) {
     return n;
 }
 
+tPosL findMemAddr(unsigned long long addr) {
+    if (M != NULL) {
+        tPosL p = first(M);
+        MemInfo *m;
+        m = (MemInfo *) (getItem(p));
+        while (p != NULL && (m->address != (void *) addr)) {
+            p = next(p);
+            if (p != NULL)
+                m = (MemInfo *) (getItem(p));
+        }
+        return p;
+    }
+    return NULL;
+}
+
 void *cadtop(char *cadena) {
     unsigned long long addr = strtoull(cadena, NULL, 16);
     tPosL p = findMemAddr(addr);
     if (p != NULL) {
         MemInfo *m = (MemInfo *) getItem(p);
         return m->address;
-    } else return "";
+    }
+    return NULL;
 }
 
 void CmdRead(char *input, char *input_trozos[], int n, bool *terminado) {
@@ -1283,7 +1394,7 @@ void Write(char *input, char *input_trozos[], int n, bool *terminado) {
 }
 
 void Memdump(char *input, char *input_trozos[], int n, bool *terminado) {
-    size_t cont, i, cont_aux;
+    size_t cont, cont_aux;
     tPosL p;
     MemInfo *m;
 
@@ -1305,24 +1416,46 @@ void Memdump(char *input, char *input_trozos[], int n, bool *terminado) {
             cont_aux = cont;
         }
     } else {
-        cont = 25;
+        if(m->size <= 25)
+            cont = m->size;
+        else
+            cont = 25;
         cont_aux = cont;
     }
 
     printf("Volcando %zu bytes desde la direccion %s\n", cont_aux, input_trozos[1]);
-    for (i = 0; i < cont; i++) {
-        if (*(unsigned char *) (m->address + i) == 0x0a) {
-            printf("\\n");
-        } else {
-            printf("%c  ", *((unsigned char *) (m->address + i)));
-        }
-    }
-    printf("\n");
-    for (i = 0; i < cont; i++) {
-        printf("%02x ", *((unsigned char *) (m->address + i)));
-    }
+    int j, k;
+    j = 0;
+    while(cont > 0){
+        int charsToPrint = (cont > 25) ? 25 : cont;
+        k = j;
+        for (int i = 0; i < charsToPrint; i++, j++) {
+            if (j >= cont_aux) {
+                // Verifica si has alcanzado el final de la memoria asignada
+                break;
+            }
 
-    printf("\n");
+            if (*(unsigned char *)(m->address + j) == 0x0a) {
+                printf("\\n  ");
+            } else {
+                printf("%c  ", *((unsigned char *)(m->address + j)));
+            }
+        }
+        printf("\n");
+
+        
+        for (int i = 0; i < charsToPrint; i++, k++) {
+            if (k >= cont_aux) {
+                // Verifica si has alcanzado el final de la memoria asignada
+                break;
+            }
+            printf("%02x ", *((unsigned char *)(m->address + k)));
+        }
+        printf("\n");
+
+        cont -= charsToPrint;
+    }
+    
 }
 
 
@@ -1333,6 +1466,7 @@ void LlenarMemoria(void *p, size_t cont, unsigned char byte) {
     for (i = 0; i < cont; i++)
         arr[i] = byte;
 }
+
 
 void Memfill(char *input, char *input_trozos[], int n, bool *terminado) {
     size_t cont;
@@ -1363,6 +1497,7 @@ void Memfill(char *input, char *input_trozos[], int n, bool *terminado) {
            input_trozos[1]);
     LlenarMemoria(m->address, cont, (char) byte);
 }
+
 
 void Do_MemPmap(void) /*sin argumentos*/
 {
@@ -1403,13 +1538,13 @@ void Do_MemPmap(void) /*sin argumentos*/
     waitpid(pid, NULL, 0);
 }
 
-void funcs() {
-    void *array[10];
+void funcsPro() {
+    void *array[5];
     size_t size;
     char **strings;
     size_t i;
 
-    size = backtrace(array, 10);
+    size = backtrace(array, 5);
     strings = backtrace_symbols(array, size);
 
     if (strings == NULL) {
@@ -1417,38 +1552,301 @@ void funcs() {
         exit(EXIT_FAILURE);
     }
 
-    printf("Funciones programa:\t");
+    printf("Funciones programa\t");
 
     for (i = 0; i < 3; i++) {
         void *addr = array[i];
         Dl_info info;
         dladdr(addr, &info);
-        printf("%p     ", addr);
+        if (i+1 != 3)
+            printf("%p, \t", addr);
+        else
+            printf("%p\n", addr);
     }
-    printf("\n");
     free(strings);
+}
+
+void funcsLib(){
+       void *printfAddress[5];
+
+        printfAddress[0] = dlsym(RTLD_DEFAULT, "printf");
+        printfAddress[1] = dlsym(RTLD_DEFAULT, "open");
+        printfAddress[2] = dlsym(RTLD_DEFAULT, "malloc");
+        
+        printf("Funciones libreria\t");
+        for (int i = 0; i < 3; i++){
+            if(i+1 != 3)
+                printf("%p, \t", printfAddress[i]);
+            else
+                printf("%p\n", printfAddress[i]);
+        }
+            
+
+}
+
+void funcsVar(){
+  int entero_local = 10;
+        float flotante_local = 2.718;
+        char caracter_local = 'B';
+        printf("Variables locales\t%p, \t%p, \t%p\n", (void*)&entero_local, (void*)&flotante_local, (void*)&caracter_local);
+
+        printf("Variables globales\t%p, \t%p, \t%p\n", (void*)&entero_global_i, (void*)&flotante_global_i, (void*)&caracter_global_i);
+
+        printf("Var (N.I.)globales\t%p, \t%p, \t%p\n", (void*)&entero_global_sin, (void*)&flotante_global_sin, (void*)&caracter_global_sin);
+
+        
+        static int entero_estatico_i = 33;
+        static float flotante_estatico_i = 1.24;
+        static char caracter_estatico_i = 'N';
+
+        // Direcciones de variables estáticas inicializadas
+        printf("Variables estáticas\t%p, \t%p, \t%p\n", (void*)&entero_estatico_i, (void*)&flotante_estatico_i, (void*)&caracter_estatico_i);
+
+        // Variables estáticas sin inicializar
+        static int entero_estatico_sin;
+        static float flotante_estatico_sin;
+        static char caracter_estatico_sin;
+
+        // Direcciones de variables estáticas sin inicializar
+        printf("Var (N.I.)staticas\t%p, \t%p, \t%p\n", (void*)&entero_estatico_sin, (void*)&flotante_estatico_sin, (void*)&caracter_estatico_sin);
 }
 
 
 void Mem(char *input, char *input_trozos[], int n, bool *terminado) {
 
     if (input_trozos[1] == NULL || strcmp(input_trozos[1], "-all") == 0) {
-        strcpy(input_trozos[1], "-vars");
-        Mem(input, input_trozos, n, terminado);
-        strcpy(input_trozos[1], "-funcs");
-        Mem(input, input_trozos, n, terminado);
-        strcpy(input_trozos[1], "-blocks");
-        Mem(input, input_trozos, n, terminado);
+        char *vars_trozos[] = {input_trozos[0], "-vars", NULL};
+        Mem(input, vars_trozos, n, terminado);
+
+        char *funcs_trozos[] = {input_trozos[0], "-funcs", NULL};
+        Mem(input, funcs_trozos, n, terminado);
+
+        char *blocks_trozos[] = {input_trozos[0], "-blocks", NULL};
+        Mem(input, blocks_trozos, n, terminado);
     } else if (strcmp(input_trozos[1], "-blocks") == 0) {
-        printMemList(MALLOC_MEMORY);
-        printMemList(SHARED_MEMORY);
-        printMemList(MAPPED_FILE);
+        pid_t pid_aux = getpid();
+        printf("******Lista de bloques asignados para el proceso %d\n", pid_aux);
+        printMemList(MALLOC_MEMORY, true);
+        printMemList(SHARED_MEMORY, true);
+        printMemList(MAPPED_FILE, true);
     } else if (strcmp(input_trozos[1], "-funcs") == 0) {
-        funcs();
-
+        funcsPro(); 
+        funcsLib();
     } else if (strcmp(input_trozos[1], "-vars") == 0) {
-
+        funcsVar();
     } else if (strcmp(input_trozos[1], "-pmap") == 0) {
         Do_MemPmap();
     } else printf("Opcion %s no contenplada", input_trozos[1]);
+}
+
+void Recursiva (int n)
+{
+  char automatico[TAMANO];
+  static char estatico[TAMANO];
+
+  printf ("parametro:%3d(%p) array %p, arr estatico %p\n",n,&n,automatico, estatico);
+
+  if (n>0)
+    Recursiva(n-1);
+}
+
+void Rec(char *input, char *input_trozos[], int n, bool *terminado){
+    if(n == 1)
+        return;
+    else
+        Recursiva(atoi(input_trozos[1]));
+}
+
+
+void showCredentials() {
+    printf("Credencial real: %d, (%s)\n", getuid(), getlogin());
+    printf("Credencial efectiva: %d, (%s)\n", geteuid(), getlogin());
+}
+
+void setCredentials(int uid, int gid) {
+    if (setuid(uid) == -1 || setgid(gid) == -1) {
+        perror("Error al establecer las credenciales");
+        return;
+    }
+}
+
+void setLoginCredentials(int uid) {
+    if (seteuid(uid) == -1) {
+        perror("Imposible cambiar de credencial\n");
+        return;
+    }
+}
+
+uid_funct(char *input, char *input_trozos[], int n, bool *terminado){
+    if(n>1){
+        if(strcmp(input_trozos[1], "-get")==0)
+            showCredentials();
+        else if(strcmp(input_trozos[1], "-set")==0){
+            if(n>2){
+                if(strcmp(input_trozos[2], "-l")==0){
+                    if(n==3)
+                        return;
+                    setLoginCredentials(atoi(input_trozos[3]));
+                }
+                    
+                else
+                    setCredentials(input_trozos[2], input_trozos[2]);
+            }
+            else
+                showCredentials();
+        }
+        else
+            showCredentials();
+
+    }
+    else
+        showCredentials();
+}
+
+/*void showvar_aux(char *argv[], int arg3, const char *var_name) {
+    if (var_name == NULL) {
+        extern char **environ;
+
+        for (int i = 0; environ[i] != NULL; ++i) {
+            char *value = strchr(environ[i], '=');
+            if (value != NULL) {
+                *value = '\0';
+                printf("0x%lx->main arg3[%d]=(%p) %s=%s\n", (unsigned long)&environ[i], i, (void *)(value + 1), environ[i], value + 1);
+                *value = '=';
+            }
+        }
+        return;
+    }
+
+    int index = arg3;
+    if (index >= 0 && index < argv) {
+        char *value = argv[index];
+        printf("Con arg3 main %s=%s(%p) @%p\n", var_name, value, (void*)value, (void*)argv);
+    } else 
+        return;
+
+    char **env_ptr = environ;
+    while (*env_ptr != NULL) {
+        if (strncmp(*env_ptr, var_name, strlen(var_name)) == 0 && (*env_ptr)[strlen(var_name)] == '=') {
+            printf("  Con environ %s=%s(%p) @%p\n", var_name, *env_ptr + strlen(var_name) + 1, (void*)(*env_ptr + strlen(var_name) + 1));
+        }
+        env_ptr++;
+    }
+    
+    char *value_getenv = getenv(var_name);  
+    if (value_getenv != NULL) {
+        printf("    Con getenv %s(%p)\n", value_getenv, (void*)value_getenv);
+    } else 
+        return;
+}
+
+
+void showvar(char *input, char *input_trozos[], int n, bool *terminado){
+    showvar_aux(argv, 2, input_trozos[1]);
+}
+
+//void changevar(char *input, char *input_trozos[], int n, bool *terminado)
+
+//void subsvar(char *input, char *input_trozos[], int n, bool *terminado)
+
+
+void showenv(char *input, char *input_trozos[], int n, bool *terminado){
+    showvar_aux(argv, 2, NULL);
+}
+*/
+
+
+void Cmd_fork (char *tr[]){
+	pid_t pid;
+	
+	if ((pid=fork())==0){
+/*		VaciarListaProcesos(&LP); Depende de la implementación de cada uno*/
+		printf ("ejecutando proceso %d\n", getpid());
+	}
+	else if (pid!=-1)
+		waitpid (pid,NULL,0);
+}
+
+void display_backprocess(tPosL p){
+    Backprocess *process;
+    process = (Backprocess *)getItem(p);
+
+    char buffer_time[20];
+    struct tm *tm_date;
+
+    tm_date = localtime(&process->launch_time);
+    strftime(buffer_time, sizeof(buffer_time), "%b %d %H:%M", tm_date);
+    printf("  %d        fer p=%d %s %s (%3d) %s", process->pid, process->priority, buffer_time, process->status, process->command_line);
+}
+
+
+
+
+void eec_aux(char *commands[], int n, int in_background){
+    pid_t pid = fork();
+
+    if (pid == -1) {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    }
+    
+    if (pid == 0) {
+        execvp(commands[0], commands);
+        perror("No ejecutado:");
+        exit(EXIT_FAILURE);
+    } else {
+        if (!in_background) {
+            int status;
+            waitpid(pid, &status, 0);
+        } else {
+            if (num_back_process < MAX_BACKGROUND_PROCESSES) {
+                Backprocess *p = malloc(sizeof(Backprocess));
+                size_t BackprocessSize = sizeof(Backprocess);
+                
+                p->pid = pid;
+                p->launch_time = time(NULL);
+                p->status = 0; // Puedes inicializarlo con un valor específico según tus necesidades.
+                p->priority = 0;
+
+                // Construye la línea de comando a partir de los argumentos
+                strcpy(p->command_line, commands[0]);
+                for (int i = 1; i < (n - 1) && commands[i] != NULL; ++i) {
+                    strcat(p->command_line, " ");
+                    strcat(p->command_line, commands[i]);
+                }
+                insertItem(p, BackprocessSize, &P);
+                num_back_process++;
+                free(p);
+            }
+            else {
+                printf("No se pueden agregar más procesos en segundo plano.\n");
+            }
+        }
+    }
+}
+
+void check_background_processes() {
+    // Verifica si los procesos en segundo plano han terminado
+    for (int i = 0; i < num_back_process; ++i) {
+        pid_t pid = waitpid(back_processes[i].pid, &(back_processes[i].status), WNOHANG);
+
+        if (pid > 0) {
+            // El proceso ha terminado
+            printf("Proceso [%d] ha terminado.\n", back_processes[i].pid);
+        }
+    }
+}
+
+
+void execute_external_command(char *input_trozos[], int n){
+    int in_background = 0;
+    int i;
+    for(int i = 0; i < n; i++){
+        if(strcmp(input_trozos[i], "&") == 0){
+            in_background = 1;
+            break;
+        }
+    }
+    eec_aux(input_trozos, n, in_background);
+
 }
