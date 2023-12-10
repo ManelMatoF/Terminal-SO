@@ -1,4 +1,4 @@
-TARGET = P2
+TARGET = P3
 
 # Compilador y opciones de compilación
 CC = gcc
