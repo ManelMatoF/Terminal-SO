@@ -54,10 +54,20 @@ typedef struct {
     time_t t; 
     AllocationType allocationType;
     union {
-        int key;
-        char filename[MAXNAME];
-        int df;
+        unsigned long key;
+        struct{
+            char filename[MAXNAME];
+            int df;
+        } mapped;
     } OtherInfo;
 }MemInfo;
+
+typedef struct {
+    pid_t pid;
+    time_t launch_time;
+    int status;
+    char command_line;
+    int priority;
+} Backprocess;
 
 #endif
