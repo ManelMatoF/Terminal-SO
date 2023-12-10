@@ -8,8 +8,9 @@
 #define MAXNAME 350
 #define MAX_TROZOS 10
 #define TAMANO 2048
+#define MAX_BACKGROUND_PROCESSES 100
 
-extern tList H, C, F, M;
+extern tList H, C, F, M, P;
 
 void aux_procesarEntrada(char *input, bool *terminado);
 void ListOpenFiles(char *input, char *input_trozos[], int n, bool *terminado);
@@ -35,6 +36,16 @@ void delete(char *input, char *input_trozos[], int n, bool *terminado);
 void deltree(char *input, char *input_trozos[], int n, bool *terminado);
 void malloc_funct(char *input, char *input_trozos[], int n, bool *terminado);
 void shared_funct(char *input, char *input_trozos[], int n, bool *terminado);
+void mmap_funct(char *input, char *input_trozos[], int n, bool *terminado);
+void CmdRead(char *input, char *input_trozos[], int n, bool *terminado);
+void Write(char *input, char *input_trozos[], int n, bool *terminado);
+void Memdump(char *input, char *input_trozos[], int n, bool *terminado);
+void Memfill(char *input, char *input_trozos[], int n, bool *terminado);
+void Mem(char *input, char *input_trozos[], int n, bool *terminado);
+void Rec(char *input, char *input_trozos[], int n, bool *terminado);
+//void showvar(char *input, char *input_trozos[], int n, bool *terminado);
+//void showenv(char *input, char *input_trozos[], int n, bool *terminado);
+
 
 
 #endif //P0_COMANDOS_H
