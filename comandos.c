@@ -1841,12 +1841,108 @@ void check_background_processes() {
 void execute_external_command(char *input_trozos[], int n){
     int in_background = 0;
     int i;
-    for(int i = 0; i < n; i++){
+    char *args[n + 1];
+    for(i = 0; i < n; i++){
         if(strcmp(input_trozos[i], "&") == 0){
             in_background = 1;
+            args[i] = NULL;
             break;
-        }
+        }else  args[i] = input_trozos[i];
     }
-    eec_aux(input_trozos, n, in_background);
+  
+         args[n] = NULL;
+   
+    eec_aux(args, n, in_background);
+}
 
+void Exec(char *input, char *input_trozos[], int n, bool *terminado) {
+    char *args[n + 1];
+    for (int i = 1; i < n; i++) {
+      args[i - 1] = input_trozos[i];
+    }
+    args[n - 1] = NULL;
+
+    execvp(input_trozos[1], args);
+    perror("Imposible ejecutar");
+}
+
+void deleteProcesses(int target_status) {
+    Backprocess *current;
+    tPosL p = P, x;
+    while (p != NULL) {
+        current = p->data;
+        if (target_status == 1 && current->status == target_status){
+            x = p;
+            p = p->next;
+            deleteItem(x, &P);
+            continue;
+        }else if (target_status == 3 && current->status == target_status){
+            x = p;
+            p = p->next;
+            deleteItem(x, &P);
+            continue;
+        }
+           
+        p = p->next;
+    }
+}
+
+void DeleteJobs(char *input, char *input_trozos[], int n, bool *terminado) {
+    if (n == 1) {
+        Jobs(input, input_trozos, n, terminado);
+        return;
+    } else if (n == 2) {
+        if (strcmp(input_trozos[1], "-term") == 0)
+            deleteProcesses(1);
+        if (strcmp(input_trozos[1], "-sig") == 0)
+            deleteProcesses(3);
+    }
+}
+
+void ProcessToForeground(pid_t pid, tPosL p) {
+    if (kill(pid, SIGCONT) == -1) {
+        perror("Error");
+        exit(EXIT_FAILURE);
+    }
+    deleteItem(p, &P);
+}
+
+void Job(char *input, char *input_trozos[], int n, bool *terminado) {
+    if (n > 1) {
+        int fg = 0;
+        pid_t pid;
+        if (n == 3) {
+            if (strcmp(input_trozos[1], "-fg") == 0){
+                fg = 1;
+                pid = (pid_t) atoi(input_trozos[2]);
+            }else {
+                Jobs(input, input_trozos, n, terminado);
+                return;
+            }
+        } else if (n == 2)
+            pid = (pid_t) atoi(input_trozos[1]);
+
+        Backprocess *current;
+        tPosL p = P;
+        struct passwd *pw;
+        int priority;
+
+        while (p != NULL) {
+            current = p->data;
+
+            if (current->pid == pid){
+                if (fg){
+                    if (current->status == 1 || current->status == 3){
+                       printf("Proceso %d no se puede llevar a primer plano\n", current->pid);
+                       return;
+                    }
+                     ProcessToForeground(current->pid, p);
+                }
+                print_process(current, p, pw, priority);
+                return; 
+            }
+            p = p->next;
+            }
+            Jobs(input, input_trozos, n, terminado);
+        }else Jobs(input, input_trozos, n, terminado);
 }
