@@ -21,6 +21,7 @@
 #include <dlfcn.h>
 #include <execinfo.h>
 #include <sys/wait.h>
+#include <sys/resource.h>
 
 
 
@@ -36,6 +37,10 @@ char caracter_global_i = 'M';
 int entero_global_sin;
 float flotante_global_sin;
 char caracter_global_sin;
+
+extern char **environ;
+char **valorGuardado;
+
 
 int TrocearCadena(char *cadena, char **input_trozos){
     int i=1;
@@ -61,7 +66,19 @@ tPosL encontrarComando(char **input_trozos) {
     return NULL;
 }
 
-void aux_procesarEntrada(char *input, bool *terminado){
+void execute_external_command(char *input_trozos[], int n);
+
+char **obtenerValorGuardado() {
+    return valorGuardado;
+}
+
+void guardarValor(char *valor[]) {
+    valorGuardado = valor;
+}
+
+
+void aux_procesarEntrada(char *input, bool *terminado, char **arg3){
+    guardarValor(arg3);
     char copy_input[MAXNAME];
     char **input_trozos = (char **)malloc(MAX_TROZOS * sizeof(char*));
     strcpy(copy_input, input);
@@ -76,7 +93,7 @@ void aux_procesarEntrada(char *input, bool *terminado){
             c = (Comands*)(getItem(cmd));
             c->funcion(input, input_trozos, input_num, terminado);
         }      
-    }  
+    }
     free(input_trozos);
 }
 
@@ -313,7 +330,7 @@ void repeat_command(char *input, char *input_trozos[], int n, bool *terminado){
                 return;
             }
             strcpy(input, comand);
-            aux_procesarEntrada(input, terminado);
+            aux_procesarEntrada(input, terminado, valorGuardado);
             return;
         }
             
@@ -1549,7 +1566,7 @@ void funcsPro() {
 
     if (strings == NULL) {
         perror("backtrace_symbols");
-        exit(EXIT_FAILURE);
+        return;
     }
 
     printf("Funciones programa\t");
@@ -1663,198 +1680,260 @@ void showCredentials() {
     printf("Credencial efectiva: %d, (%s)\n", geteuid(), getlogin());
 }
 
-void setCredentials(int uid, int gid) {
-    if (setuid(uid) == -1 || setgid(gid) == -1) {
-        perror("Error al establecer las credenciales");
+void setCredentials(int uid) {
+    if (setuid(uid) == -1) {
+        perror("Imposible cambiar de credencial");
         return;
     }
 }
 
-void setLoginCredentials(int uid) {
-    if (seteuid(uid) == -1) {
-        perror("Imposible cambiar de credencial\n");
+void setLoginCredentials(const char *username) {
+    struct passwd *pw = getpwnam(username);
+    if (pw == NULL) {
+        perror("Imposible cambiar de credencial");
         return;
     }
+    setCredentials(pw->pw_uid);
 }
 
-uid_funct(char *input, char *input_trozos[], int n, bool *terminado){
+void uid_funct(char *input, char *input_trozos[], int n, bool *terminado){//comprobar que funciona bien
     if(n>1){
         if(strcmp(input_trozos[1], "-get")==0)
             showCredentials();
         else if(strcmp(input_trozos[1], "-set")==0){
             if(n>2){
                 if(strcmp(input_trozos[2], "-l")==0){
-                    if(n==3)
+                    if(n==3){
+                        showCredentials();
                         return;
-                    setLoginCredentials(atoi(input_trozos[3]));
+                    }
+                    setLoginCredentials(input_trozos[3]);
                 }
                     
                 else
-                    setCredentials(input_trozos[2], input_trozos[2]);
+                    setCredentials(atoi(input_trozos[2]));
             }
             else
                 showCredentials();
         }
         else
             showCredentials();
-
     }
     else
         showCredentials();
 }
 
-/*void showvar_aux(char *argv[], int arg3, const char *var_name) {
+
+void showvar_aux(const char *var_name) {
+    char **arg3 = obtenerValorGuardado();
+    int i;
     if (var_name == NULL) {
-        extern char **environ;
+        for (i = 0; arg3[i] != NULL; ++i)
+            printf("%p->main arg3[%d]=(%p) %s\n", (void*)arg3[i], i, (void*)&arg3[i], arg3[i]);
+    }
 
-        for (int i = 0; environ[i] != NULL; ++i) {
-            char *value = strchr(environ[i], '=');
-            if (value != NULL) {
-                *value = '\0';
-                printf("0x%lx->main arg3[%d]=(%p) %s=%s\n", (unsigned long)&environ[i], i, (void *)(value + 1), environ[i], value + 1);
-                *value = '=';
+    else{
+        char *value = NULL;
+        
+        if (getenv(var_name)!=NULL) {
+            for (int i = 0; arg3[i] != NULL; ++i) {
+                if((value = strstr(arg3[i], var_name)) != NULL){
+                    printf("Con arg3 main %s(%p) @%p\n", arg3[i], (void*)value, (void*)&arg3[i]);
+                    break;
+                }
+                
             }
+            for (int i = 0; environ[i] != NULL; ++i) {
+                if ((value = strstr(environ[i], var_name)) == environ[i]) {
+                    printf("  Con environ %s(%p) @%p\n", environ[i], (void*)value, (void*)&environ[i]);
+                    break;
+                }
+            }
+            value = getenv(var_name);
+            printf("    Con getenv %s(%p)\n", value, (void*)value);
+            return;
         }
         return;
     }
-
-    int index = arg3;
-    if (index >= 0 && index < argv) {
-        char *value = argv[index];
-        printf("Con arg3 main %s=%s(%p) @%p\n", var_name, value, (void*)value, (void*)argv);
-    } else 
-        return;
-
-    char **env_ptr = environ;
-    while (*env_ptr != NULL) {
-        if (strncmp(*env_ptr, var_name, strlen(var_name)) == 0 && (*env_ptr)[strlen(var_name)] == '=') {
-            printf("  Con environ %s=%s(%p) @%p\n", var_name, *env_ptr + strlen(var_name) + 1, (void*)(*env_ptr + strlen(var_name) + 1));
-        }
-        env_ptr++;
-    }
-    
-    char *value_getenv = getenv(var_name);  
-    if (value_getenv != NULL) {
-        printf("    Con getenv %s(%p)\n", value_getenv, (void*)value_getenv);
-    } else 
-        return;
 }
-
 
 void showvar(char *input, char *input_trozos[], int n, bool *terminado){
-    showvar_aux(argv, 2, input_trozos[1]);
+    showvar_aux(input_trozos[1]);
 }
 
-//void changevar(char *input, char *input_trozos[], int n, bool *terminado)
+void actuValor(char **arg3, char *var1, char *var2, char *valor){
+    int i;
+    for (i = 0; arg3[i] != NULL && strstr(arg3[i], var1) == NULL; ++i);
+    if (arg3[i] != NULL) {
+        size_t new_length = strlen(var2) + strlen(valor) + 2;
+        char *new_entry = malloc(new_length);
+        snprintf(new_entry, new_length, "%s=%s", var2, valor);
 
-//void subsvar(char *input, char *input_trozos[], int n, bool *terminado)
+        // Liberar la memoria de la variable antigua y asignar la nueva
+        free(arg3[i]);
+        arg3[i] = new_entry;
+    }
+}
+
+void changevar(char *input, char *input_trozos[], int n, bool *terminado){
+    if(n != 4){
+        printf("Uso: changevar [-a|-e|-p] var valor\n");
+        return;
+    }
+    char **arg3 = obtenerValorGuardado();
+
+    if(strcmp("-a", input_trozos[1])==0){
+        int i;
+        for (i = 0; arg3[i] != NULL && strstr(arg3[i], input_trozos[2]) == NULL; ++i);
+        if(arg3[i] != NULL){
+            const char *variable = input_trozos[2];
+            const char *value = input_trozos[3];
+            setenv(variable, value, 1);
+            actuValor(arg3, input_trozos[2], input_trozos[2], input_trozos[3]);
+        }
+        return;
+    }
+    else if(strcmp("-e", input_trozos[1])==0){
+        char **env_var = environ;
+
+        while (*env_var != NULL) {
+            if (strncmp(*env_var, input_trozos[2], strlen(input_trozos[2])) == 0) {
+                strcpy(*env_var, input_trozos[2]);
+                strcat(*env_var, "=");
+                strcat(*env_var, input_trozos[3]);
+                actuValor(arg3, input_trozos[2], input_trozos[2], input_trozos[3]);
+                break;
+            }
+            env_var++;
+        }
+        return;
+    }
+    else if(strcmp("-p", input_trozos[1])==0){
+        char *env_entry = malloc(strlen(input_trozos[2]) + strlen(input_trozos[3]) + 2);
+        strcpy(env_entry, input_trozos[2]);
+        strcat(env_entry, "=");
+        strcat(env_entry, input_trozos[3]);
+        putenv(env_entry);
+        actuValor(arg3, input_trozos[2], input_trozos[2], input_trozos[3]);
+        return;
+    }
+    else
+        printf("Uso: changevar [-a|-e|-p] var valor\n");
+}
+
+void subsvar(char *input, char *input_trozos[], int n, bool *terminado){
+    if (n != 5) {
+        printf("Uso: subsvar [-a|-e] var1 var2 valor\n");
+        return;
+    }
+
+    const char *var1 = input_trozos[2];
+    const char *var2 = input_trozos[3];
+    const char *value = input_trozos[4];
+
+    if (strcmp(input_trozos[1], "-a") == 0) {
+        char **arg3 = obtenerValorGuardado();
+        int i, j;
+        for (i = 0; arg3[i] != NULL && strstr(arg3[i], input_trozos[2]) == NULL; ++i);
+        if(arg3[i] != NULL){
+            for(j = 0;  arg3[j] != NULL && strstr(arg3[j], input_trozos[2]) == NULL; ++j);
+            if(arg3[j] == NULL){
+                if(unsetenv(input_trozos[2]) != 0){
+                    fprintf(stderr, "Imposible sustituir variable %s por %s:", input_trozos[2], input_trozos[3]);
+                }
+                setenv(input_trozos[3], value, 0);
+                actuValor(arg3, input_trozos[2], input_trozos[3], input_trozos[4]);
+            }
+            
+        }
+        else
+            fprintf(stderr, "Imposible sustituir variable %s por %s:", input_trozos[2], input_trozos[3]);
+            
+    } else if (strcmp(input_trozos[1], "-e") == 0) {
+        char **env_var = environ;
+        while (*env_var != NULL) {
+            if (strncmp(*env_var, var1, strlen(var1)) == 0) {
+                char *new_entry = malloc(strlen(var2) + strlen(value) + 2);
+                sprintf(new_entry, "%s=%s", var2, value);
+                putenv(new_entry);
+                break;
+            }
+            env_var++;
+        }
+
+        if (*env_var == NULL) {
+            fprintf(stderr, "Variable de entorno no encontrada: %s\n", var1);
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        printf("Uso: subsvar [-a|-e] var1 var2 valor\n");
+    }
+}
 
 
 void showenv(char *input, char *input_trozos[], int n, bool *terminado){
-    showvar_aux(argv, 2, NULL);
+    if(n == 1)
+        showvar_aux(NULL);
+    else if(strcmp("-environ", input_trozos[1]) == 0){
+        for (int i = 0; environ[i] != NULL; ++i)
+        printf("%p->environ[%d]=(%p) %s\n",  (void*)environ[i], i, (void*)&environ[i], environ[i]);
+    }
+    else if(strcmp("-addr", input_trozos[1]) == 0){
+        char **arg3 = obtenerValorGuardado();
+        printf("environ:    %p (almacenado en %p)\n", (void*)environ, (void*)&environ);
+        printf("main arg3:  %p (almacenado en %p)\n", (void*)arg3, (void*)&arg3);
+    }
+    else
+        printf("Uso: showenv [-environ|-addr]\n");
+
 }
-*/
 
-
-void Cmd_fork (char *tr[]){
+void Cmd_fork (){
 	pid_t pid;
 	
 	if ((pid=fork())==0){
-/*		VaciarListaProcesos(&LP); Depende de la implementación de cada uno*/
 		printf ("ejecutando proceso %d\n", getpid());
 	}
 	else if (pid!=-1)
 		waitpid (pid,NULL,0);
 }
 
+void fork_funct(char *input, char *input_trozos[], int n, bool *terminado){
+    Cmd_fork();
+}
+
+char *aux_estado(int status){
+    char *estado = (char *)malloc(30 * sizeof(char));
+    
+    if (WIFEXITED(status)) 
+        strcpy(estado, "FINISHED");
+    else if (WIFSTOPPED(status))
+        strcpy(estado, "STOPPED");
+    else if(WIFSIGNALED(status))
+        strcpy(estado, "SIGNALED");
+    else
+        strcpy(estado, "ACTIVE");
+
+    return estado;
+}
+
 void display_backprocess(tPosL p){
     Backprocess *process;
     process = (Backprocess *)getItem(p);
 
-    char buffer_time[20];
-    struct tm *tm_date;
+    if(getppid() == process->pid_padre){
+        char buffer_time[20];
+        struct tm *tm_date;
 
-    tm_date = localtime(&process->launch_time);
-    strftime(buffer_time, sizeof(buffer_time), "%b %d %H:%M", tm_date);
-    printf("  %d        fer p=%d %s %s (%3d) %s", process->pid, process->priority, buffer_time, process->status, process->command_line);
-}
+        tm_date = localtime(&process->launch_time);
+        strftime(buffer_time, sizeof(buffer_time), "%Y/%m/%d %H:%M:%S", tm_date);
 
-
-
-
-void eec_aux(char *commands[], int n, int in_background){
-    pid_t pid = fork();
-
-    if (pid == -1) {
-        perror("fork");
-        exit(EXIT_FAILURE);
+        printf("  %d        fer p=%d %s %s (%03d) %s\n", process->pid, getpriority(PRIO_PROCESS, process->pid), buffer_time, aux_estado(process->status), process->return_value, process->command_line);
     }
-    
-    if (pid == 0) {
-        execvp(commands[0], commands);
-        perror("No ejecutado:");
-        exit(EXIT_FAILURE);
-    } else {
-        if (!in_background) {
-            int status;
-            waitpid(pid, &status, 0);
-        } else {
-            if (num_back_process < MAX_BACKGROUND_PROCESSES) {
-                Backprocess *p = malloc(sizeof(Backprocess));
-                size_t BackprocessSize = sizeof(Backprocess);
-                
-                p->pid = pid;
-                p->launch_time = time(NULL);
-                p->status = 0; // Puedes inicializarlo con un valor específico según tus necesidades.
-                p->priority = 0;
-
-                // Construye la línea de comando a partir de los argumentos
-                strcpy(p->command_line, commands[0]);
-                for (int i = 1; i < (n - 1) && commands[i] != NULL; ++i) {
-                    strcat(p->command_line, " ");
-                    strcat(p->command_line, commands[i]);
-                }
-                insertItem(p, BackprocessSize, &P);
-                num_back_process++;
-                free(p);
-            }
-            else {
-                printf("No se pueden agregar más procesos en segundo plano.\n");
-            }
-        }
-    }
-}
-
-void check_background_processes() {
-    // Verifica si los procesos en segundo plano han terminado
-    for (int i = 0; i < num_back_process; ++i) {
-        pid_t pid = waitpid(back_processes[i].pid, &(back_processes[i].status), WNOHANG);
-
-        if (pid > 0) {
-            // El proceso ha terminado
-            printf("Proceso [%d] ha terminado.\n", back_processes[i].pid);
-        }
-    }
-}
-
-
-void execute_external_command(char *input_trozos[], int n){
-    int in_background = 0;
-    int i;
-    char *args[n + 1];
-    for(i = 0; i < n; i++){
-        if(strcmp(input_trozos[i], "&") == 0){
-            in_background = 1;
-            args[i] = NULL;
-            break;
-        }else  args[i] = input_trozos[i];
-    }
-  
-         args[n] = NULL;
+    else 
+        return;
    
-    eec_aux(args, n, in_background);
 }
-
 void Exec(char *input, char *input_trozos[], int n, bool *terminado) {
     char *args[n + 1];
     for (int i = 1; i < n; i++) {
@@ -1866,30 +1945,60 @@ void Exec(char *input, char *input_trozos[], int n, bool *terminado) {
     perror("Imposible ejecutar");
 }
 
-void deleteProcesses(int target_status) {
-    Backprocess *current;
-    tPosL p = P, x;
-    while (p != NULL) {
-        current = p->data;
-        if (target_status == 1 && current->status == target_status){
-            x = p;
-            p = p->next;
-            deleteItem(x, &P);
-            continue;
-        }else if (target_status == 3 && current->status == target_status){
-            x = p;
-            p = p->next;
-            deleteItem(x, &P);
-            continue;
+void check_background_processes() {
+    // Verifica el estado de los porcesos en segundo plano
+    if(P != NULL){
+        Backprocess *process;
+        
+        for (tPosL p = first(P); p != NULL; p = next(p)) {
+            process = (Backprocess *)getItem(p);
+            pid_t pid = waitpid(process->pid, &(process->status), WNOHANG);
+
+            if (pid > 0) {
+                if (WIFEXITED(process->status)) 
+                    process->return_value = WEXITSTATUS(process->status);
+                if (WIFSTOPPED(process->status))
+                    process->return_value = WSTOPSIG(process->status);
+                if(WIFSIGNALED(process->status))
+                    process->return_value = WTERMSIG(process->status);
+            }
         }
-           
-        p = p->next;
+    }
+    return;
+}
+
+void jobs(char *input, char *input_trozos[], int n, bool *terminado){
+    if(P != NULL){
+        check_background_processes();
+        for(tPosL p = first(P); p != NULL; p = next(p)){
+            display_backprocess(p);
+        }
+    }
+    return;
+}
+
+void deleteProcesses(int target_status) {
+    Backprocess *process;
+    tPosL p;
+    if(P != NULL){
+        check_background_processes();
+        p = first(P);
+        process = (Backprocess *)getItem(p);
+        while (p != NULL) {
+            if (WIFEXITED(process->status) && getppid() == process->pid_padre){
+                deleteItem(p, &P);
+            }else if(WIFSIGNALED(process->status) && getppid() == process->pid_padre){
+                deleteItem(p, &P);
+            }
+            else
+                p=next(p);
+        }
     }
 }
 
 void DeleteJobs(char *input, char *input_trozos[], int n, bool *terminado) {
     if (n == 1) {
-        Jobs(input, input_trozos, n, terminado);
+        jobs(input, input_trozos, n, terminado);
         return;
     } else if (n == 2) {
         if (strcmp(input_trozos[1], "-term") == 0)
@@ -1900,14 +2009,17 @@ void DeleteJobs(char *input, char *input_trozos[], int n, bool *terminado) {
 }
 
 void ProcessToForeground(pid_t pid, tPosL p) {
-    if (kill(pid, SIGCONT) == -1) {
+    if (tcsetpgrp(STDIN_FILENO, getpgid(pid)) == -1) {
         perror("Error");
         exit(EXIT_FAILURE);
     }
+    waitpid(pid, NULL, 0);
     deleteItem(p, &P);
 }
 
 void Job(char *input, char *input_trozos[], int n, bool *terminado) {
+    if(P != NULL)
+        check_background_processes();
     if (n > 1) {
         int fg = 0;
         pid_t pid;
@@ -1916,33 +2028,85 @@ void Job(char *input, char *input_trozos[], int n, bool *terminado) {
                 fg = 1;
                 pid = (pid_t) atoi(input_trozos[2]);
             }else {
-                Jobs(input, input_trozos, n, terminado);
+                jobs(input, input_trozos, n, terminado);
                 return;
             }
-        } else if (n == 2)
-            pid = (pid_t) atoi(input_trozos[1]);
+    } else if (n == 2)
+        pid = (pid_t) atoi(input_trozos[1]);
 
-        Backprocess *current;
-        tPosL p = P;
-        struct passwd *pw;
-        int priority;
+    Backprocess *current;
+    tPosL p = P;
 
         while (p != NULL) {
-            current = p->data;
+            current = (Backprocess *)getItem(p);
 
-            if (current->pid == pid){
+            if (current->pid == pid && getppid() == current->pid_padre){
                 if (fg){
-                    if (current->status == 1 || current->status == 3){
-                       printf("Proceso %d no se puede llevar a primer plano\n", current->pid);
-                       return;
+                    if (WIFEXITED(current->status) || WIFSIGNALED(current->status)){
+                    printf("Proceso %d no se puede llevar a primer plano\n", current->pid);
+                    return;
                     }
-                     ProcessToForeground(current->pid, p);
+                    ProcessToForeground(current->pid, p);
+                    return;
                 }
-                print_process(current, p, pw, priority);
+                display_backprocess(p);
                 return; 
             }
-            p = p->next;
+            p = next(p);
+        }
+        jobs(input, input_trozos, n, terminado);
+    }
+    else 
+        jobs(input, input_trozos, n, terminado);
+}
+
+void eec_aux(char *commands[], int n, int in_background){
+    pid_t pid = fork();
+
+    if (pid == -1) {
+        perror("fork");
+        return;
+    }
+    
+    if (pid == 0) {
+        execvp(commands[0], commands);
+        perror("No ejecutado");
+        exit(EXIT_FAILURE);   
+    }
+    else {
+        if (!in_background)
+            waitpid(pid, NULL, 0);
+        else {
+            Backprocess *p = malloc(sizeof(Backprocess));
+            size_t BackprocessSize = sizeof(Backprocess);
+            
+            p->pid_padre = getppid();
+            p->pid = pid;
+            p->launch_time = time(NULL);
+            p->status = -1;//activo
+            
+
+            strcpy(p->command_line, commands[0]);
+            for (int i = 1; commands[i] != NULL; ++i) {
+                strcat(p->command_line, " ");
+                strcat(p->command_line, commands[i]);
             }
-            Jobs(input, input_trozos, n, terminado);
-        }else Jobs(input, input_trozos, n, terminado);
+            insertItem(p, BackprocessSize, &P);
+            num_back_process++;
+            free(p);
+        }
+    }
+}
+
+void execute_external_command(char *input_trozos[], int n){
+    int in_background = 0;
+    for(int i = 0; i < n; i++){
+        if(strcmp(input_trozos[i], "&") == 0){
+            input_trozos[i]=NULL;
+            in_background = 1;
+            continue;
+        }
+    }
+    eec_aux(input_trozos, n, in_background);
+
 }
