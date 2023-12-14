@@ -5,7 +5,7 @@ CC = gcc
 CFLAGS = -Wall -g	
 
 # Lista de archivos fuente y objetos
-SRCS = P2.c lista.c comandos.c
+SRCS = P3.c lista.c comandos.c
 OBJS = $(SRCS:.c=.o)
 
 # Reglas de compilación
