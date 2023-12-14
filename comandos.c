@@ -1833,21 +1833,24 @@ void subsvar(char *input, char *input_trozos[], int n, bool *terminado){
 
     if (strcmp(input_trozos[1], "-a") == 0) {
         char **arg3 = obtenerValorGuardado();
-        int i, j;
-        for (i = 0; arg3[i] != NULL && strstr(arg3[i], input_trozos[2]) == NULL; ++i);
+        int i;
+        for (i = 0; arg3[i] != NULL && strstr(arg3[i], input_trozos[2]) == NULL; i++);
         if(arg3[i] != NULL){
-            for(j = 0;  arg3[j] != NULL && strstr(arg3[j], input_trozos[2]) == NULL; ++j);
-            if(arg3[j] == NULL){
+            for(i = 0;  arg3[i] != NULL && strstr(arg3[i], input_trozos[3]) == NULL; i++);
+            if(arg3[i] == NULL){
                 if(unsetenv(input_trozos[2]) != 0){
-                    fprintf(stderr, "Imposible sustituir variable %s por %s:", input_trozos[2], input_trozos[3]);
+                    printf("Imposible sustituir variable %s por %s", input_trozos[2], input_trozos[3]);
+                    return;
                 }
                 setenv(input_trozos[3], value, 0);
                 actuValor(arg3, input_trozos[2], input_trozos[3], input_trozos[4]);
             }
+            printf("Imposible sustituir variable %s por %s: File exists\n", input_trozos[2], input_trozos[3]);
+            return;
             
         }
         else
-            fprintf(stderr, "Imposible sustituir variable %s por %s:", input_trozos[2], input_trozos[3]);
+            printf("Imposible sustituir variable %s por %s\n", input_trozos[2], input_trozos[3]);
             
     } else if (strcmp(input_trozos[1], "-e") == 0) {
         char **env_var = environ;
