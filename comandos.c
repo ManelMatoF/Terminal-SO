@@ -1986,15 +1986,17 @@ void deleteProcesses(int target_status) {
     if(P != NULL){
         check_background_processes();
         p = first(P);
-        process = (Backprocess *)getItem(p);
         while (p != NULL) {
+            process = (Backprocess *)getItem(p);
             if (WIFEXITED(process->status) && getppid() == process->pid_padre){
-                deleteItem(p, &P);
+                tPosL x = p;
+                p = next(p);
+                deleteItem(x, &P);
             }else if(WIFSIGNALED(process->status) && getppid() == process->pid_padre){
-                deleteItem(p, &P);
-            }
-            else
-                p=next(p);
+                tPosL x = p;
+                p = next(p);
+                deleteItem(x, &P);
+            }else p=next(p);
         }
     }
 }
