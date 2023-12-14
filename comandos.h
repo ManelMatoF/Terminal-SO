@@ -6,13 +6,13 @@
 #include "lista.h"
 
 #define MAXNAME 350
-#define MAX_TROZOS 10
+#define MAX_TROZOS 100
 #define TAMANO 2048
-#define MAX_BACKGROUND_PROCESSES 100
+
 
 extern tList H, C, F, M, P;
 
-void aux_procesarEntrada(char *input, bool *terminado);
+void aux_procesarEntrada(char *input, bool *terminado, char **arg3);
 void ListOpenFiles(char *input, char *input_trozos[], int n, bool *terminado);
 void Cmd_open (char *input, char *input_trozos[], int n, bool *terminado);
 void Cmd_close (char *input, char *input_trozos[], int n, bool *terminado);
@@ -43,9 +43,16 @@ void Memdump(char *input, char *input_trozos[], int n, bool *terminado);
 void Memfill(char *input, char *input_trozos[], int n, bool *terminado);
 void Mem(char *input, char *input_trozos[], int n, bool *terminado);
 void Rec(char *input, char *input_trozos[], int n, bool *terminado);
-//void showvar(char *input, char *input_trozos[], int n, bool *terminado);
-//void showenv(char *input, char *input_trozos[], int n, bool *terminado);
-
+void uid_funct(char *input, char *input_trozos[], int n, bool *terminado);
+void showvar(char *input, char *input_trozos[], int n, bool *terminado);
+void showenv(char *input, char *input_trozos[], int n, bool *terminado);
+void changevar(char *input, char *input_trozos[], int n, bool *terminado);
+void subsvar(char *input, char *input_trozos[], int n, bool *terminado);
+void fork_funct(char *input, char *input_trozos[], int n, bool *terminado);
+void Exec(char *input, char *input_trozos[], int n, bool *terminado);
+void jobs(char *input, char *input_trozos[], int n, bool *terminado);
+void DeleteJobs(char *input, char *input_trozos[], int n, bool *terminado);
+void Job(char *input, char *input_trozos[], int n, bool *terminado);
 
 
 #endif //P0_COMANDOS_H
